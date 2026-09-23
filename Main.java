@@ -1,88 +1,144 @@
 import java.util.Scanner;
 
-void main() {
-    Scanner scanner = new Scanner(System.in);
-    
-    IO.println();
-    IO.println("Онлайн-магазин: Оформлення замовлення");
-    IO.println();
+public class Main {
+    void main() {
+        Scanner scanner = new Scanner(System.in);
 
-    IO.print("Введіть ім'я клієнта: ");
-    String clientName = scanner.nextLine();
+        System.out.println();
+        System.out.println("                 ІНТЕРНЕТ-МАГАЗИН:                ");
+        System.out.println("==================================================");
+        System.out.println();
 
-    IO.print("Введіть назву товару: ");
-    String productTitle = scanner.nextLine();
+        System.out.println("--- 1. ДАНІ КЛІЄНТА ---");
+        System.out.print("Введіть ім'я клієнта: ");
+        String customerName = scanner.nextLine();
 
-    IO.print("Введіть категорію товару: ");
-    String category = scanner.nextLine();
+        System.out.print("Введіть номер телефону: ");
+        String customerPhone = scanner.nextLine();
 
-    IO.print("Введіть ціну товару (грн): ");
-    double price = scanner.nextDouble();
+        Customer customer = new Customer(customerName, customerPhone);
+        System.out.println("Поточний клієнт: " + customer);
+        System.out.println();
 
-    IO.print("Введіть кількість (шт): ");
-    int quantity = scanner.nextInt();
+        System.out.println("--- 2. ФОРМУВАННЯ КОШИКА ТОВАРІВ ---");
+        System.out.print("Введіть кількість товарів для додавання: ");
+        int count = scanner.nextInt();
+        scanner.nextLine();
 
-    IO.print("Введіть рейтинг товару (від 1 до 5): ");
-    double rating = scanner.nextDouble();
+        Product[] products = new Product[count];
+        for (int i = 0; i < count; i++) {
+            System.out.println();
+            System.out.println("Введення товару №" + (i + 1) + ":");
 
-    IO.print("Потрібна експрес-доставка? (true/false): ");
-    boolean isExpress = scanner.nextBoolean();
+            System.out.print("Назва товару: ");
+            String name = scanner.nextLine();
 
-    double subtotal = price * quantity;
+            System.out.print("Категорія: ");
+            String category = scanner.nextLine();
 
-    double discount;
-    if (subtotal >= 5000) {
-        discount = subtotal * 0.10;
-    } else if (subtotal >= 2500) {
-        discount = subtotal * 0.05;
-    } else {
-        discount = 0;
+            System.out.print("Ціна (грн): ");
+            double price = scanner.nextDouble();
+
+            System.out.print("Кількість (шт): ");
+            int quantity = scanner.nextInt();
+            scanner.nextLine();
+
+            products[i] = new Product(name, category, price, quantity);
+        }
+
+        System.out.println();
+        System.out.println("--- СПИСОК ТОВАРІВ У КОШИКУ КЛІЄНТА " + customer.getName() + " (" + customer.getPhone() + ") ---");
+        printProducts(products);
+
+        System.out.println();
+        System.out.println("--- ПІДСУМОК: ФІЛЬТР ТОВАРІВ ЗА БЮДЖЕТОМ ---");
+        System.out.print("Шукати товари, дешевші за (введіть суму в грн): ");
+        double limitPrice = scanner.nextDouble();
+        scanner.nextLine();
+
+        int cheaperCount = 0;
+        for (Product product : products) {
+            if (product.getPrice() < limitPrice) {
+                cheaperCount++;
+            }
+        }
+        System.out.println("Кількість товарів, дешевших за " + limitPrice + " грн: " + cheaperCount + " шт.");
+
+        int totalQuantity = 0;
+        for (Product product : products) {
+            totalQuantity += product.getQuantity();
+        }
+        System.out.println("Загальна кількість одиниць товару в кошику: " + totalQuantity + " шт.");
+        System.out.println();
+
+        System.out.println("--- 3. СОРТУВАННЯ ТОВАРІВ ЗА ЦІНОЮ ---");
+        System.out.println("Масив ДО сортування:");
+        printProducts(products);
+
+        bubbleSortByPrice(products);
+
+        System.out.println();
+        System.out.println("Масив ПІСЛЯ Bubble Sort (за зростанням ціни):");
+        printProducts(products);
+        System.out.println();
+
+        System.out.println("--- 4. ЛІНІЙНИЙ ПОШУК ТОВАРУ ЗА ЗРАЗКОМ ---");
+        System.out.println("Введіть дані товару-зразка для пошуку (мають збігатися всі поля):");
+
+        System.out.print("Назва: ");
+        String searchName = scanner.nextLine();
+
+        System.out.print("Категорія: ");
+        String searchCategory = scanner.nextLine();
+
+        System.out.print("Ціна: ");
+        double searchPrice = scanner.nextDouble();
+
+        System.out.print("Кількість: ");
+        int searchQuantity = scanner.nextInt();
+        scanner.nextLine();
+
+        Product sampleProduct = new Product(searchName, searchCategory, searchPrice, searchQuantity);
+
+        int foundIndex = findProduct(products, sampleProduct);
+
+        if (foundIndex != -1) {
+            System.out.println();
+            System.out.println("Знайдено товар \"" + products[foundIndex].getName() + "\" за індексом [" + foundIndex + "]:");
+            System.out.println(products[foundIndex]);
+        } else {
+            System.out.println();
+            System.out.println("Товар-зразок не знайдено у списку.");
+        }
+        System.out.println();
+        System.out.println("Роботу програми успішно завершено!");
+        scanner.close();
     }
 
-    double deliveryCost;
-    if ((subtotal - discount) >= 1500) {
-        deliveryCost = 0;
-    } else {
-        deliveryCost = 150;
+    public static void printProducts(Product[] products) {
+        for (Product product : products) {
+            System.out.println(product);
+        }
     }
 
-    String deliveryType;
-    if (isExpress) {
-        deliveryCost += 100;
-        deliveryType = "Експрес (+100 грн)";
-    } else {
-        deliveryType = "Стандартна";
+    public static void bubbleSortByPrice(Product[] products) {
+        for (int i = 0; i < products.length - 1; i++) {
+            for (int j = 0; j < products.length - 1 - i; j++) {
+                if (products[j].getPrice() > products[j + 1].getPrice()) {
+                    Product temp = products[j];
+                    products[j] = products[j + 1];
+                    products[j + 1] = temp;
+                }
+            }
+        }
     }
 
-    String ratingStatus;
-    if (rating >= 4.5) {
-        ratingStatus = "Високий рейтинг (Хіт продажу!)";
-    } else if (rating >= 3) {
-        ratingStatus = "Середній рейтинг (Добрий вибір)";
-    } else {
-        ratingStatus = "Низький рейтинг";
+    public static int findProduct(Product[] products, Product target) {
+        for (int i = 0; i < products.length; i++) {
+            if (products[i].equals(target)) {
+                return i;
+            }
+        }
+        return -1;
     }
-
-    double finalTotal = subtotal - discount + deliveryCost;
-
-    IO.println();
-    IO.println("==================================================");
-    IO.println("                 ЧЕК ЗАМОВЛЕННЯ                   ");
-    IO.println("==================================================");
-    IO.println("Клієнт: " + clientName);
-    IO.println("Товар: " + productTitle);
-    IO.println("Категорія: " + category);
-    System.out.printf("Ціна за одиницю: %.2f грн%n", price);
-    IO.println("Кількість: " + quantity + " шт.");
-    System.out.printf("Рейтинг: %.2f / 5.00 (%s)%n", rating, ratingStatus);
-    IO.println("Тип доставки: " + deliveryType);
-    IO.println("--------------------------------------------------");
-    System.out.printf("Вартість товарів: %.2f грн%n", subtotal);
-    System.out.printf("Знижка: -%.2f грн%n", discount);
-    System.out.printf("Доставка: %.2f грн%n", deliveryCost);
-    IO.println("--------------------------------------------------");
-    System.out.printf("РАЗОМ ДО СПЛАТИ: %.2f грн%n", finalTotal);
-    IO.println("==================================================");
-    IO.println("Дякуємо за покупку в нашому інтернет-магазині!");
-    scanner.close();
 }
