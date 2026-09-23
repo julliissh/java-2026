@@ -1,59 +1,114 @@
-import java.util.InputMismatchException;
-import java.util.Locale;
 import java.util.Scanner;
 
 public class Main {
 
-    void main() {
+    public static void main(String[] args) {
         Scanner scanner = new Scanner(System.in);
-        scanner.useLocale(Locale.US);
 
-        // =====================================================================
-        // Рівень 1: Блок try-finally — Scanner завжди закривається через finally
-        // =====================================================================
         try {
-            System.out.printf("%n%50s%n", "ІНТЕРНЕТ-МАГАЗИН:");
-            System.out.printf("%-50s%n%n", "=".repeat(50));
+            System.out.println();
+            System.out.println("                 ІНТЕРНЕТ-МАГАЗИН:                ");
+            System.out.println("==================================================");
+            System.out.println();
 
-            // -----------------------------------------------------------------
-            // 1. ДАНІ КЛІЄНТА
-            // -----------------------------------------------------------------
+            // 1. ДАНІ КЛІЄНТА (перевірка на порожні поля)
             System.out.println("--- 1. ДАНІ КЛІЄНТА ---");
-            Customer customer = readCustomer(scanner);
+            Customer customer = null;
+            while (customer == null) {
+                try {
+                    System.out.print("Введіть ім'я клієнта: ");
+                    String customerName = scanner.nextLine().trim();
+
+                    System.out.print("Введіть номер телефону: ");
+                    String customerPhone = scanner.nextLine().trim();
+
+                    customer = new Customer(customerName, customerPhone);
+                } catch (EmptyNameException e) {
+                    System.out.println("Помилка: " + e.getMessage() + " Спробуйте ще раз.\n");
+                }
+            }
             System.out.println("Поточний клієнт: " + customer);
             System.out.println();
 
-            // -----------------------------------------------------------------
             // 2. ФОРМУВАННЯ КОШИКА ТОВАРІВ
-            // -----------------------------------------------------------------
             System.out.println("--- 2. ФОРМУВАННЯ КОШИКА ТОВАРІВ ---");
-            int count = readProductCount(scanner);
+            int count = 0;
+            while (count <= 0) {
+                try {
+                    System.out.print("Введіть кількість товарів для додавання: ");
+                    count = Integer.parseInt(scanner.nextLine().trim());
 
-            Product[] products = new Product[count];
-
-            // Рівень 3: Зовнішній try-catch — ловить re-thrown ShopException
-            try {
-                for (int i = 0; i < count; i++) {
-                    products[i] = readProduct(scanner, i + 1);
+                    if (count <= 0) {
+                        throw new IllegalArgumentException("Кількість товарів має бути більшою за 0!");
+                    }
+                } catch (NumberFormatException e) {
+                    System.out.println("Помилка: потрібно ввести ціле число!");
+                } catch (IllegalArgumentException e) {
+                    System.out.println("Помилка: " + e.getMessage());
                 }
-            } catch (ShopException e) {
-                // Сюди потрапляємо лише якщо readProduct кинув re-throw
-                System.out.println("\n[КРИТИЧНА ПОМИЛКА] Введення товару перервано: " + e.getMessage());
-                System.out.println("Програму завершено. Перезапустіть та введіть коректні дані.");
-                return; // завершення роботи — finally все одно виконається
             }
 
+            Product[] products = new Product[count];
+            for (int i = 0; i < count; i++) {
+                boolean added = false;
+                while (!added) {
+                    System.out.println("\nВведення товару №" + (i + 1) + ":");
+                    try {
+                        System.out.print("Назва товару: ");
+                        String name = scanner.nextLine().trim();
+
+                        System.out.print("Категорія: ");
+                        String category = scanner.nextLine().trim();
+
+                        System.out.print("Ціна (грн): ");
+                        double price = Double.parseDouble(scanner.nextLine().trim().replace(',', '.'));
+
+                        System.out.print("Кількість (шт): ");
+                        int quantity = Integer.parseInt(scanner.nextLine().trim());
+
+                        // Створення товару через метод з re-throw
+                        products[i] = createProduct(name, category, price, quantity);
+                        added = true;
+                        System.out.println("Товар успішно додано!");
+
+                    } catch (NumberFormatException e) {
+                        // Перехоплення нечислового введення
+                        System.out.println("Помилка: ціна та кількість повинні бути коректними числами!");
+                    } catch (InvalidPriceException e) {
+                        // Перехоплення конкретного підкласу після re-throw
+                        System.out.println("Помилка: " + e.getMessage());
+                    } catch (EmptyNameException e) {
+                        // Перехоплення окремої гілки виключень (порожнє поле)
+                        System.out.println("Помилка: " + e.getMessage());
+                    } catch (ShopException e) {
+                        // Поліморфний catch: базовий клас перехоплює InvalidQuantityException
+                        System.out.println("Помилка магазину: " + e.getMessage());
+                    }
+                }
+            }
+
+            // Виведення списку товарів (форматований вивід через toString)
             System.out.println();
-            System.out.println("--- СПИСОК ТОВАРІВ У КОШИКУ КЛІЄНТА "
-                    + customer.getName() + " (" + customer.getPhone() + ") ---");
+            System.out.println("--- СПИСОК ТОВАРІВ У КОШИКУ КЛІЄНТА " + customer.getName() + " (" + customer.getPhone() + ") ---");
             printProducts(products);
 
-            // -----------------------------------------------------------------
             // 3. ПІДСУМОК: ФІЛЬТР ЗА БЮДЖЕТОМ
-            // -----------------------------------------------------------------
             System.out.println();
             System.out.println("--- ПІДСУМОК: ФІЛЬТР ТОВАРІВ ЗА БЮДЖЕТОМ ---");
-            double limitPrice = readBudgetLimit(scanner);
+            double limitPrice = 0;
+            while (limitPrice <= 0) {
+                try {
+                    System.out.print("Шукати товари, дешевші за (введіть суму в грн): ");
+                    limitPrice = Double.parseDouble(scanner.nextLine().trim().replace(',', '.'));
+                    if (limitPrice <= 0) {
+                        throw new IllegalArgumentException("Сума повинна бути більшою за 0!");
+                    }
+                } catch (NumberFormatException e) {
+                    System.out.println("Помилка: потрібно ввести числове значення!");
+                } catch (IllegalArgumentException e) {
+                    System.out.println("Помилка: " + e.getMessage());
+                }
+            }
 
             int cheaperCount = 0;
             for (Product product : products) {
@@ -61,18 +116,16 @@ public class Main {
                     cheaperCount++;
                 }
             }
-            System.out.println("Кількість товарів, дешевших за " + limitPrice + " грн: " + cheaperCount + " шт.");
+            System.out.printf("Кількість товарів, дешевших за %.2f грн: %d шт.%n", limitPrice, cheaperCount);
 
             int totalQuantity = 0;
             for (Product product : products) {
                 totalQuantity += product.getQuantity();
             }
-            System.out.println("Загальна кількість одиниць товару в кошику: " + totalQuantity + " шт.");
+            System.out.printf("Загальна кількість одиниць товару в кошику: %d шт.%n", totalQuantity);
             System.out.println();
 
-            // -----------------------------------------------------------------
-            // 4. СОРТУВАННЯ (Bubble Sort)
-            // -----------------------------------------------------------------
+            // 4. СОРТУВАННЯ ЗА ЦІНОЮ
             System.out.println("--- 3. СОРТУВАННЯ ТОВАРІВ ЗА ЦІНОЮ ---");
             System.out.println("Масив ДО сортування:");
             printProducts(products);
@@ -84,20 +137,37 @@ public class Main {
             printProducts(products);
             System.out.println();
 
-            // -----------------------------------------------------------------
-            // 5. ЛІНІЙНИЙ ПОШУК ЗА ЗРАЗКОМ
-            // -----------------------------------------------------------------
+            // 5. ЛІНІЙНИЙ ПОШУК ТОВАРУ ЗА ЗРАЗКОМ
             System.out.println("--- 4. ЛІНІЙНИЙ ПОШУК ТОВАРУ ЗА ЗРАЗКОМ ---");
             System.out.println("Введіть дані товару-зразка для пошуку (мають збігатися всі поля):");
 
-            Product sampleProduct = readProduct(scanner, -1); // -1 = режим зразка, не re-throw
+            Product sampleProduct = null;
+            while (sampleProduct == null) {
+                try {
+                    System.out.print("Назва: ");
+                    String searchName = scanner.nextLine().trim();
+
+                    System.out.print("Категорія: ");
+                    String searchCategory = scanner.nextLine().trim();
+
+                    System.out.print("Ціна: ");
+                    double searchPrice = Double.parseDouble(scanner.nextLine().trim().replace(',', '.'));
+
+                    System.out.print("Кількість: ");
+                    int searchQuantity = Integer.parseInt(scanner.nextLine().trim());
+
+                    sampleProduct = new Product(searchName, searchCategory, searchPrice, searchQuantity);
+                } catch (NumberFormatException e) {
+                    System.out.println("Помилка: ціна та кількість зразка мають бути числами!");
+                } catch (EmptyNameException | ShopException e) {
+                    System.out.println("Помилка зразка: " + e.getMessage() + " Спробуйте ще раз.");
+                }
+            }
 
             int foundIndex = findProduct(products, sampleProduct);
-
             if (foundIndex != -1) {
                 System.out.println();
-                System.out.printf("Знайдено товар \"%s\" за індексом [%d]:%n",
-                        products[foundIndex].getName(), foundIndex);
+                System.out.printf("Знайдено товар \"%s\" за індексом [%d]:%n", products[foundIndex].getName(), foundIndex);
                 System.out.println(products[foundIndex]);
             } else {
                 System.out.println();
@@ -108,189 +178,27 @@ public class Main {
             System.out.println("Роботу програми успішно завершено!");
 
         } catch (Exception e) {
-            // Рівень 1: catch(Exception e) — ловить будь-яку непередбачену помилку
-            System.out.println("\n[Непередбачена помилка] " + e.getMessage());
+            System.out.println("\nНепередбачена помилка: " + e.getMessage());
             e.printStackTrace();
         } finally {
-            // Рівень 1: finally — Scanner закривається ЗАВЖДИ (навіть при помилці)
-            System.out.println("\n(finally) Закриття ресурсів...");
+            // Гарантоване закриття ресурсів
+            System.out.println("\n[finally]: Звільнення ресурсів, закриття Scanner.");
             scanner.close();
         }
     }
 
-    // =========================================================================
-    // Допоміжний метод: зчитування даних клієнта з валідацією
-    // =========================================================================
-    private static Customer readCustomer(Scanner scanner) throws EmptyNameException {
-        Customer customer = null;
-        while (customer == null) {
-            try {
-                System.out.print("Введіть ім'я клієнта: ");
-                String customerName = scanner.nextLine();
-
-                System.out.print("Введіть номер телефону: ");
-                String customerPhone = scanner.nextLine();
-
-                // Рівень 2: конструктор Customer кидає EmptyNameException
-                customer = new Customer(customerName, customerPhone);
-
-            } catch (EmptyNameException e) {
-                // Рівень 2: перехоплюємо і просимо ввести знову
-                System.out.println("  [Помилка] " + e.getMessage() + " Спробуйте ще раз.\n");
-            }
-        }
-        return customer;
-    }
-
-    // =========================================================================
-    // Допоміжний метод: зчитування кількості товарів з валідацією
-    // =========================================================================
-    private static int readProductCount(Scanner scanner) {
-        int count = 0;
-        while (count <= 0) {
-            try {
-                System.out.print("Введіть кількість товарів для додавання: ");
-                count = scanner.nextInt();
-                scanner.nextLine();
-                // Рівень 1: власна перевірка через IllegalArgumentException
-                if (count <= 0) {
-                    throw new IllegalArgumentException("Кількість має бути > 0, отримано: " + count);
-                }
-            } catch (InputMismatchException e) {
-                // Рівень 1: введено не число
-                System.out.println("  [Помилка] Введіть ціле число.");
-                scanner.nextLine(); // очищення буфера
-                count = 0;
-            } catch (IllegalArgumentException e) {
-                // Рівень 1: число є, але некоректне
-                System.out.println("  [Помилка] " + e.getMessage());
-                count = 0;
-            }
-        }
-        return count;
-    }
-
-    // =========================================================================
-    // Допоміжний метод: зчитування бюджетного ліміту з валідацією
-    // =========================================================================
-    private static double readBudgetLimit(Scanner scanner) {
-        double limit = -1;
-        while (limit <= 0) {
-            try {
-                System.out.print("Шукати товари, дешевші за (введіть суму в грн): ");
-                limit = scanner.nextDouble();
-                scanner.nextLine();
-                if (limit <= 0) {
-                    throw new IllegalArgumentException("Сума має бути > 0, отримано: " + limit);
-                }
-            } catch (InputMismatchException e) {
-                System.out.println("  [Помилка] Введіть числове значення.");
-                scanner.nextLine();
-                limit = -1;
-            } catch (IllegalArgumentException e) {
-                System.out.println("  [Помилка] " + e.getMessage());
-                limit = -1;
-            }
-        }
-        return limit;
-    }
-
-    // =========================================================================
-    // Допоміжний метод: зчитування одного товару з валідацією
-    //
-    // productNumber > 0  → режим додавання: при InvalidPrice/InvalidQuantity
-    //                      виконується re-throw (летить у зовнішній catch)
-    // productNumber == -1 → режим зразка: повторюємо введення без re-throw
-    // =========================================================================
-    private static Product readProduct(Scanner scanner, int productNumber)
-            throws ShopException {
-
-        String label = (productNumber > 0) ? "Введення товару №" + productNumber + ":" : "Введення товару-зразка:";
-        Product product = null;
-
-        while (product == null) {
-            System.out.println();
-            System.out.println(label);
-
-            // Рівень 1: зчитування рядків — помилки малоймовірні, але захищаємо
-            System.out.print("Назва товару: ");
-            String name = scanner.nextLine();
-
-            System.out.print("Категорія: ");
-            String category = scanner.nextLine();
-
-            // Рівень 1: зчитування числових полів з InputMismatchException
-            double price = readDouble(scanner, "Ціна (грн): ");
-            int quantity = readInt(scanner, "Кількість (шт): ");
-
-            // Рівень 2 + 3: кілька catch для одного try
-            try {
-                product = new Product(name, category, price, quantity);
-
-            } catch (InvalidPriceException e) {
-                // Рівень 3: RE-THROW конкретного підкласу
-                // При додаванні товару — логуємо і кидаємо далі (зупиняє процес для демонстрації re-throw)
-                // При введенні зразка — просто повідомляємо і повторюємо
-                if (productNumber > 0) {
-                    System.out.println("  [LOG] Помилка ціни товару (re-throw): " + e.getMessage());
-                    throw e; // re-throw → летить у зовнішній catch(ShopException e) у main()
-                } else {
-                    System.out.println("  [Помилка] " + e.getMessage() + " Спробуйте ще раз.");
-                }
-
-            } catch (EmptyNameException e) {
-                // Рівень 2+3: EmptyNameException — окрема гілка ієрархії (не ShopException)
-                // catch(ShopException) не спіймав би це — тому тут окремий catch
-                System.out.println("  [Помилка] " + e.getMessage() + " Спробуйте ще раз.");
-
-            } catch (ShopException e) {
-                // Рівень 3: Базовий тип ієрархії — ловить інші підкласи ShopException
-                // (зокрема InvalidQuantityException, демонструючи поліморфне перехоплення суперкласом)
-                System.out.println("  [Помилка магазину (ShopException)] " + e.getMessage() + " Спробуйте ще раз.");
-
-            } catch (Exception e) {
-                // Рівень 1: catch(Exception e) — непередбачувана помилка
-                System.out.println("  [Непередбачена помилка] " + e.getMessage());
-                e.printStackTrace();
-            }
-        }
-        return product;
-    }
-
-    // =========================================================================
-    // Допоміжні методи: безпечне зчитування чисел (Рівень 1)
-    // =========================================================================
-    private static double readDouble(Scanner scanner, String prompt) {
-        while (true) {
-            try {
-                System.out.print(prompt);
-                double value = scanner.nextDouble();
-                scanner.nextLine();
-                return value;
-            } catch (InputMismatchException e) {
-                System.out.println("  [Помилка] Введіть числове значення (наприклад: 450.0).");
-                scanner.nextLine();
-            }
+    // Метод реєстрації товару з механізмом Re-throw (Рівень 3)
+    public static Product createProduct(String name, String category, double price, int quantity)
+            throws ShopException, EmptyNameException {
+        try {
+            return new Product(name, category, price, quantity);
+        } catch (InvalidPriceException e) {
+            // Логування/аудит перед повторним збудженням (re-throw)
+            System.out.println("[ЛОГ/АУДИТ]: Спроба створення товару з неприпустимою ціною: " + e.getInvalidPrice() + " грн!");
+            throw e; // повторне збудження (re-throw) для обробки у виклику
         }
     }
 
-    private static int readInt(Scanner scanner, String prompt) {
-        while (true) {
-            try {
-                System.out.print(prompt);
-                int value = scanner.nextInt();
-                scanner.nextLine();
-                return value;
-            } catch (InputMismatchException e) {
-                System.out.println("  [Помилка] Введіть ціле число (наприклад: 2).");
-                scanner.nextLine();
-            }
-        }
-    }
-
-    // =========================================================================
-    // Допоміжні методи: вивід, сортування, пошук (з ЛР1/ЛР2)
-    // =========================================================================
     public static void printProducts(Product[] products) {
         for (Product product : products) {
             System.out.println(product);
