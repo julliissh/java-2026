@@ -56,9 +56,29 @@ java.lang.Exception (Checked)
 
 ---
 
+## 📁 Структура проєкту
+
+```text
+java-2026/
+├── src/
+│   ├── Customer.java                 # Клас клієнта з валідацією полів
+│   ├── Product.java                  # Клас товару з валідацією та String.format
+│   ├── Main.java                     # Головна точка входу, меню, логіка, re-throw
+│   ├── ShopException.java            # Базовий checked-виняток магазину
+│   ├── InvalidPriceException.java    # Виняток для некоректної ціни товару
+│   ├── InvalidQuantityException.java # Виняток для некоректної кількості товару
+│   └── EmptyNameException.java       # Виняток для порожніх текстових полів
+├── .gitignore                        # Ігнорування службових файлів (out/, *.class тощо)
+├── README.md                         # Документація лабораторної роботи
+└── run.bat                           # Скрипт компіляції та запуску
+```
+
+---
+
 ## 🚀 Інструкція запуску
 
-### Через `run.bat` (Windows):
+### Швидкий запуск через `run.bat` (Windows):
+Двічі клацніть файл `run.bat` або запустіть у терміналі:
 ```cmd
 run.bat
 ```
@@ -66,8 +86,8 @@ run.bat
 ### Вручну через термінал:
 ```powershell
 chcp 65001 > nul
-javac -encoding UTF-8 *.java
-java -Dfile.encoding=UTF-8 Main
+javac -encoding UTF-8 -d out src\*.java
+java -cp out -Dfile.encoding=UTF-8 Main
 ```
 
 ---
