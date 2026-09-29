@@ -7,14 +7,14 @@ import java.util.InputMismatchException;
 import java.util.Scanner;
 
 public class Main {
-    public static final int MAX_PRODUCTS = 20;
-    public static final double DISCOUNT_HIGH_THRESHOLD = 5000.0;
-    public static final double DISCOUNT_LOW_THRESHOLD = 2500.0;
-    public static final double DISCOUNT_HIGH_RATE = 0.10; 
-    public static final double DISCOUNT_LOW_RATE = 0.05; 
-    public static final double FREE_DELIVERY_THRESHOLD = 1500.0;
-    public static final double STANDARD_DELIVERY_FEE = 150.0;
-    public static final double EXPRESS_DELIVERY_EXTRA = 100.0;
+    private static final int MAX_PRODUCTS = 20;
+    private static final double DISCOUNT_HIGH_THRESHOLD = 5000.0;
+    private static final double DISCOUNT_LOW_THRESHOLD = 2500.0;
+    private static final double DISCOUNT_HIGH_RATE = 0.10; 
+    private static final double DISCOUNT_LOW_RATE = 0.05; 
+    private static final double FREE_DELIVERY_THRESHOLD = 1500.0;
+    private static final double STANDARD_DELIVERY_FEE = 150.0;
+    private static final double EXPRESS_DELIVERY_EXTRA = 100.0;
 
     void main() {
         Scanner scanner = new Scanner(System.in);
