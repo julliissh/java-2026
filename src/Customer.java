@@ -1,15 +1,14 @@
 import exception.InvalidPhoneException;
 
 public class Customer {
-    public static final int MIN_PHONE_LENGTH = 10;
-    public static final int MAX_PHONE_LENGTH = 13;
+    private static final String PHONE_REGEX = "^(?:\\+?38)?(?:\\(0\\d{2}\\)|0\\d{2})[-\\s]?\\d{3}[-\\s]?\\d{2}[-\\s]?\\d{2}$";
 
     private String name;
     private String phone;
 
-    public Customer(String name, String phone) throws InvalidPhoneException {
-        if (phone == null || phone.length() < MIN_PHONE_LENGTH || phone.length() > MAX_PHONE_LENGTH) {
-            throw new InvalidPhoneException("Номер телефону має містити від " + MIN_PHONE_LENGTH + " до " + MAX_PHONE_LENGTH + " символів", phone);
+    public Customer(String name, String phone) {
+        if (phone == null || phone.matches(PHONE_REGEX) == false) {
+            throw new InvalidPhoneException("Номер телефону не відповідає формату (наприклад, +380991234567 або 0991234567)", phone);
         }
         this.name = name;
         this.phone = phone;

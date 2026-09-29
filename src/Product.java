@@ -9,7 +9,7 @@ public class Product {
     private double price;
     private int quantity;
 
-    public Product(String name, String category, double price, int quantity) throws InvalidPriceException, InvalidQuantityException {
+    public Product(String name, String category, double price, int quantity) {
         if (price <= 0) {
             throw new InvalidPriceException("Ціна товару повинна бути більшою за 0", price);
         }
@@ -39,7 +39,7 @@ public class Product {
         return quantity;
     }
 
-    public void buy(int amount) throws ShopException {
+    public void buy(int amount) {
         if (amount <= 0) {
             throw new InvalidQuantityException("Кількість для покупки має бути більшою за 0", amount);
         }

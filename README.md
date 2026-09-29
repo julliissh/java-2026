@@ -19,10 +19,10 @@ java.lang.Exception (Checked)
             └── InsufficientStockException (недостатньо на складі, зберігає requestedQuantity та availableQuantity)
 ```
 
-1. **ShopException** — базовий checked-клас для доменних помилок інтернет-магазину (extends Exception).
+1. **ShopException** — базовий unchecked-клас для доменних помилок інтернет-магазину (extends RuntimeException).
 2. **InvalidPriceException** — сигналізує про неприпустиму ціну товару (price <= 0), зберігає invalidPrice.
 3. **InvalidQuantityException** — сигналізує про неприпустиму кількість товару (quantity <= 0), зберігає invalidQuantity.
-4. **InvalidPhoneException** — сигналізує про некоректний номер телефону покупця (номер має містити від 10 до 13 символів), зберігає invalidPhone.
+4. **InvalidPhoneException** — сигналізує про некоректний номер телефону покупця (перевірка регулярним виразом формату України), зберігає invalidPhone.
 5. **InsufficientStockException** — сигналізує про недостатню кількість товару на складі при покупці, зберігає requestedQuantity та availableQuantity.
 
 ---
@@ -36,11 +36,11 @@ java.lang.Exception (Checked)
 - **Блок finally:** гарантовано закриває Scanner при завершенні програми для звільнення системних ресурсів.
 
 ### Рівень 2. Середній
-- **Власні checked-виключення в окремому пакеті exception:** ShopException, InvalidPriceException, InvalidQuantityException, InvalidPhoneException, InsufficientStockException із викликом super(message) та полями збереження помилкових значень.
-- **Конструктори та методи сутностей з throws та throw new:**
-  - Customer(name, phone) throws InvalidPhoneException — валідує номер телефону.
-  - Product(name, category, price, quantity) throws InvalidPriceException, InvalidQuantityException — валідує параметри створення товару.
-  - Product.buy(amount) throws ShopException — перевіряє кількість одиниць для списання зі складу (генерує InsufficientStockException або InvalidQuantityException).
+- **Власні unchecked-виключення в окремому пакеті exception:** ShopException, InvalidPriceException, InvalidQuantityException, InvalidPhoneException, InsufficientStockException (наслідують RuntimeException) із викликом super(message) та полями збереження помилкових значень.
+- **Конструктори та методи сутностей із throw new:**
+  - Customer(name, phone) — валідує номер телефону регулярним виразом формату України.
+  - Product(name, category, price, quantity) — валідує параметри створення товару.
+  - Product.buy(amount) — перевіряє кількість одиниць для списання зі складу (генерує InsufficientStockException або InvalidQuantityException).
 - **Відновлення роботи:** програма не переривається аварійно при помилках введення чи винятках, а виводить зрозуміле повідомлення та повертається до меню або повторного вводу.
 
 ### Рівень 3. Високий
@@ -62,8 +62,7 @@ java.lang.Exception (Checked)
 Основні налаштування та значення бізнес-логіки винесені у статичні константи для уникнення «магічних чисел» і спрощення зміни параметрів програми:
 
 1. **Клас Customer:**
-   - `MIN_PHONE_LENGTH = 10` — мінімальна довжина телефонного номера.
-   - `MAX_PHONE_LENGTH = 13` — максимальна довжина телефонного номера (для номерів формату України).
+   - `PHONE_REGEX` — регулярний вираз формату українського номера (`+380...`, `0...`, з дефісами/дужками).
 
 2. **Клас Main (налаштування магазину та оформлення замовлення):**
    - `MAX_PRODUCTS = 20` — максимальна місткість каталогу.
@@ -123,10 +122,10 @@ java -cp out -Dfile.encoding=UTF-8 Main
 
 --- 1. ДАНІ КЛІЄНТА ---
 Введіть ім'я клієнта: Олена
-Введіть номер телефону (10-13 символів): 099123
-Помилка: Номер телефону має містити від 10 до 13 символів (введено: '099123'). Спробуйте ще раз.
+Введіть номер телефону (+380... або 0...): 099123
+Помилка: Номер телефону не відповідає формату (наприклад, +380991234567 або 0991234567) (введено: '099123'). Спробуйте ще раз.
 
-Введіть номер телефону (10-13 символів): +380991234567
+Введіть номер телефону (+380... або 0...): +380991234567
 Поточний клієнт успішно зареєстрований: Клієнт: Олена (тел: +380991234567)
 
 ================ МЕНЮ ІНТЕРНЕТ-МАГАЗИНУ ================

@@ -1,6 +1,6 @@
 package exception;
 
-public class ShopException extends Exception {
+public class ShopException extends RuntimeException {
 
     public ShopException(String message) {
         super(message);

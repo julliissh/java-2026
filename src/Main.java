@@ -82,7 +82,7 @@ public class Main {
         Customer customer = null;
         while (customer == null) {
             try {
-                System.out.print("Введіть номер телефону (від " + Customer.MIN_PHONE_LENGTH + " символів): ");
+                System.out.print("Введіть номер телефону (+380... або 0...): ");
                 String customerPhone = scanner.nextLine().trim();
                 customer = new Customer(customerName, customerPhone);
             } catch (InvalidPhoneException e) {
@@ -353,7 +353,7 @@ public class Main {
         }
     }
 
-    private static Product createProduct(String name, String category, double price, int quantity)throws ShopException {
+    private static Product createProduct(String name, String category, double price, int quantity) {
         try {
             return new Product(name, category, price, quantity);
         } catch (InvalidPriceException e) {
