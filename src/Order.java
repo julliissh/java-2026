@@ -20,6 +20,10 @@ public class Order {
         this.discountStrategy = discountStrategy;
     }
 
+    public void setDelivery(Delivery delivery) {
+        this.delivery = delivery;
+    }
+
     public double getSubtotal() {
         return product.getPrice() * amount;
     }

@@ -309,8 +309,6 @@ public class Main {
                 throw new IllegalArgumentException("Некоректний вибір доставки! Оберіть 1, 2 або 3.");
             }
 
-            selectedProduct.buy(buyAmount);
-
             Order order = new Order(customer, selectedProduct, buyAmount, new ThresholdDiscount(), delivery);
 
             System.out.print("\nВведіть промокод (або натисніть Enter, щоб пропустити): ");
@@ -322,6 +320,7 @@ public class Main {
                 System.out.println("Промокод недійсний. Застосовано стандартну програму лояльності.");
             }
 
+            selectedProduct.buy(buyAmount);
             order.printReceipt();
 
         } catch (InputMismatchException e) {
