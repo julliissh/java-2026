@@ -315,7 +315,7 @@ public class Main {
 
             System.out.print("\nВведіть промокод (або натисніть Enter, щоб пропустити): ");
             String promoCode = scanner.nextLine().trim();
-            if (promoCode.equalsIgnoreCase("SALE15")) {
+            if (promoCode.equalsIgnoreCase(PromoCodeDiscount.PROMO_CODE)) {
                 order.setDiscountStrategy(new PromoCodeDiscount());
                 System.out.println("Промокод успішно застосовано! Знижка змінена на 15%.");
             } else if (!promoCode.isEmpty()) {

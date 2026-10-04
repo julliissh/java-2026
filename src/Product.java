@@ -4,9 +4,9 @@ import exception.InvalidQuantityException;
 import exception.ShopException;
 
 public class Product implements Comparable<Product>, Purchasable {
-    private String name;
-    private String category;
-    private double price;
+    private final String name;
+    private final String category;
+    private final double price;
     private int quantity;
 
     public Product(String name, String category, double price, int quantity) {

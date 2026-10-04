@@ -20,10 +20,6 @@ public class Order {
         this.discountStrategy = discountStrategy;
     }
 
-    public DiscountStrategy getDiscountStrategy() {
-        return discountStrategy;
-    }
-
     public double getSubtotal() {
         return product.getPrice() * amount;
     }
