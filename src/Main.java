@@ -1,20 +1,22 @@
+import delivery.Delivery;
+import delivery.ExpressDelivery;
+import delivery.PickupDelivery;
+import delivery.StandardDelivery;
+import discount.DiscountStrategy;
+import discount.NoDiscount;
+import discount.PromoCodeDiscount;
+import discount.ThresholdDiscount;
 import exception.InsufficientStockException;
 import exception.InvalidPhoneException;
 import exception.InvalidPriceException;
 import exception.InvalidQuantityException;
 import exception.ShopException;
+import java.util.Arrays;
 import java.util.InputMismatchException;
 import java.util.Scanner;
 
 public class Main {
     private static final int MAX_PRODUCTS = 20;
-    private static final double DISCOUNT_HIGH_THRESHOLD = 5000.0;
-    private static final double DISCOUNT_LOW_THRESHOLD = 2500.0;
-    private static final double DISCOUNT_HIGH_RATE = 0.10; 
-    private static final double DISCOUNT_LOW_RATE = 0.05; 
-    private static final double FREE_DELIVERY_THRESHOLD = 1500.0;
-    private static final double STANDARD_DELIVERY_FEE = 150.0;
-    private static final double EXPRESS_DELIVERY_EXTRA = 100.0;
 
     void main() {
         Scanner scanner = new Scanner(System.in);
@@ -37,7 +39,7 @@ public class Main {
                     choice = scanner.nextInt();
                     scanner.nextLine();
                 } catch (InputMismatchException e) {
-                    System.out.println("Помилка: потрібно ввести цифру від 0 до 6!");
+                    System.out.println("Помилка: потрібно ввести цифру від 0 до 7!");
                     scanner.nextLine();
                     continue;
                 }
@@ -61,11 +63,14 @@ public class Main {
                     case 6:
                         checkout(scanner, customer, products, count);
                         break;
+                    case 7:
+                        compareDiscounts(scanner);
+                        break;
                     case 0:
                         System.out.println("\nДякуємо за користування нашим інтернет-магазином! Гарного дня!");
                         return;
                     default:
-                        System.out.println("Помилка: невірний пункт меню! Оберіть від 0 до 6.");
+                        System.out.println("Помилка: невірний пункт меню! Оберіть від 0 до 7.");
                         break;
                 }
             }
@@ -100,9 +105,10 @@ public class Main {
         System.out.println("1 - Додати новий товар до каталогу");
         System.out.println("2 - Переглянути всі товари в каталозі");
         System.out.println("3 - Фільтр за бюджетом та підсумок каталогу");
-        System.out.println("4 - Сортувати товари за ціною (Bubble Sort)");
+        System.out.println("4 - Сортувати товари за ціною (Comparable)");
         System.out.println("5 - Пошук товару за зразком (лінійний пошук)");
         System.out.println("6 - Оформити покупку (розрахунок знижки, доставки та чек)");
+        System.out.println("7 - Порівняти всі способи знижки для суми");
         System.out.println("0 - Завершити роботу");
         System.out.println("========================================================");
         System.out.print("Оберіть дію: ");
@@ -197,11 +203,11 @@ public class Main {
             return;
         }
 
-        System.out.println("\n--- СОРТУВАННЯ ТОВАРІВ ЗА ЦІНОЮ (BUBBLE SORT) ---");
+        System.out.println("\n--- СОРТУВАННЯ ТОВАРІВ ЗА ЦІНОЮ (COMPARABLE) ---");
         System.out.println("Масив ДО сортування:");
         printProducts(products, count);
 
-        bubbleSortByPrice(products, count);
+        Arrays.sort(products, 0, count);
 
         System.out.println();
         System.out.println("Масив ПІСЛЯ сортування (за зростанням ціни):");
@@ -274,68 +280,49 @@ public class Main {
             }
 
             Product selectedProduct = products[itemIndex];
+            if (!selectedProduct.isInStock()) {
+                System.out.println("Товар \"" + selectedProduct.getName() + "\" закінчився на складі!");
+                return;
+            }
             System.out.println("Обрано: " + selectedProduct.getName() + " (в наявності: " + selectedProduct.getQuantity() + " шт.)");
 
             System.out.print("Введіть кількість одиниць для покупки: ");
             int buyAmount = scanner.nextInt();
             scanner.nextLine();
 
-            System.out.print("Потрібна швидка експрес-доставка? (1 - так (+" + EXPRESS_DELIVERY_EXTRA + " грн), 0 - ні): ");
-            int expressChoice = scanner.nextInt();
+            System.out.println("\nОберіть спосіб доставки:");
+            System.out.println("1 - Стандартна доставка (150 грн, від 1500 грн безкоштовно)");
+            System.out.println("2 - Експрес-доставка (150 грн + 100 грн за швидкість)");
+            System.out.println("3 - Самовивіз з магазину (безкоштовно)");
+            System.out.print("Ваш вибір: ");
+            int deliveryChoice = scanner.nextInt();
             scanner.nextLine();
 
-            if (expressChoice != 0 && expressChoice != 1) {
-                throw new IllegalArgumentException("Некоректний вибір доставки! Введіть 1 (експрес) або 0 (стандартна).");
+            Delivery delivery;
+            if (deliveryChoice == 1) {
+                delivery = new StandardDelivery();
+            } else if (deliveryChoice == 2) {
+                delivery = new ExpressDelivery();
+            } else if (deliveryChoice == 3) {
+                delivery = new PickupDelivery();
+            } else {
+                throw new IllegalArgumentException("Некоректний вибір доставки! Оберіть 1, 2 або 3.");
             }
-            boolean isExpress = (expressChoice == 1);
 
             selectedProduct.buy(buyAmount);
 
-            double subtotal = selectedProduct.getPrice() * buyAmount;
+            Order order = new Order(customer, selectedProduct, buyAmount, new ThresholdDiscount(), delivery);
 
-            double discount = 0;
-            if (subtotal >= DISCOUNT_HIGH_THRESHOLD) {
-                discount = subtotal * DISCOUNT_HIGH_RATE;
-            } else if (subtotal >= DISCOUNT_LOW_THRESHOLD) {
-                discount = subtotal * DISCOUNT_LOW_RATE;
+            System.out.print("\nВведіть промокод (або натисніть Enter, щоб пропустити): ");
+            String promoCode = scanner.nextLine().trim();
+            if (promoCode.equalsIgnoreCase("SALE15")) {
+                order.setDiscountStrategy(new PromoCodeDiscount());
+                System.out.println("Промокод успішно застосовано! Знижка змінена на 15%.");
+            } else if (!promoCode.isEmpty()) {
+                System.out.println("Промокод недійсний. Застосовано стандартну програму лояльності.");
             }
 
-            double deliveryCost;
-            if ((subtotal - discount) >= FREE_DELIVERY_THRESHOLD) {
-                deliveryCost = 0;
-            } else {
-                deliveryCost = STANDARD_DELIVERY_FEE;
-            }
-
-            String deliveryType;
-            if (isExpress) {
-                deliveryType = "Експрес";
-                deliveryCost += EXPRESS_DELIVERY_EXTRA;
-            } else {
-                deliveryType = "Стандартна";
-            }
-
-            double finalTotal = subtotal - discount + deliveryCost;
-
-            System.out.println();
-            System.out.println("==================================================");
-            System.out.println("                 ЧЕК ЗАМОВЛЕННЯ                   ");
-            System.out.println("==================================================");
-            System.out.println("Клієнт: " + customer.getName() + " (" + customer.getPhone() + ")");
-            System.out.println("Товар: " + selectedProduct.getName());
-            System.out.println("Категорія: " + selectedProduct.getCategory());
-            System.out.printf("Ціна за од.: %.2f грн%n", selectedProduct.getPrice());
-            System.out.println("Кількість: " + buyAmount + " шт.");
-            System.out.println("Тип доставки: " + deliveryType);
-            System.out.println("--------------------------------------------------");
-            System.out.printf("Вартість товару: %.2f грн%n", subtotal);
-            System.out.printf("Знижка клієнта: -%.2f грн%n", discount);
-            System.out.printf("Вартість доставки: %.2f грн%n", deliveryCost);
-            System.out.println("--------------------------------------------------");
-            System.out.printf("РАЗОМ ДО СПЛАТИ: %.2f грн%n", finalTotal);
-            System.out.println("Залишок товару на складі: " + selectedProduct.getQuantity() + " шт.");
-            System.out.println("==================================================");
-            System.out.println("Дякуємо за покупку в нашому інтернет-магазині!");
+            order.printReceipt();
 
         } catch (InputMismatchException e) {
             System.out.println("Помилка: номер товару та кількість мають бути цілими числами!");
@@ -350,6 +337,37 @@ public class Main {
             System.out.println("Помилка кількості: " + e.getMessage() + " (введено: " + e.getInvalidQuantity() + " шт.)!");
         } catch (ShopException e) {
             System.out.println("Помилка магазину: " + e.getMessage());
+        }
+    }
+
+    private static void compareDiscounts(Scanner scanner) {
+        System.out.println("\n--- ПОРІВНЯННЯ СПОСОБІВ ЗНИЖКИ (ПОЛІМОРФІЗМ) ---");
+        double sum = 0;
+        while (sum <= 0) {
+            try {
+                System.out.print("Введіть суму замовлення для перевірки (грн): ");
+                sum = scanner.nextDouble();
+                scanner.nextLine();
+                if (sum <= 0) {
+                    throw new IllegalArgumentException("Сума повинна бути більшою за 0!");
+                }
+            } catch (InputMismatchException e) {
+                System.out.println("Помилка: потрібно ввести числове значення!");
+                scanner.nextLine();
+            } catch (IllegalArgumentException e) {
+                System.out.println("Помилка: " + e.getMessage());
+            }
+        }
+
+        DiscountStrategy[] strategies = {
+            new NoDiscount(),
+            new ThresholdDiscount(),
+            new PromoCodeDiscount()
+        };
+
+        System.out.println("\nРезультати розрахунку для суми " + sum + " грн:");
+        for (DiscountStrategy strategy : strategies) {
+            System.out.println(strategy.describe(sum));
         }
     }
 
@@ -370,18 +388,6 @@ public class Main {
         for (int i = 0; i < count; i++) {
             System.out.printf("[%d] Товар: %-19s | Категорія: %-12s | Ціна: %8.2f грн | Залишок: %3d шт.%n",
                     (i + 1), products[i].getName(), products[i].getCategory(), products[i].getPrice(), products[i].getQuantity());
-        }
-    }
-
-    private static void bubbleSortByPrice(Product[] products, int count) {
-        for (int i = 0; i < count - 1; i++) {
-            for (int j = 0; j < count - 1 - i; j++) {
-                if (products[j].getPrice() > products[j + 1].getPrice()) {
-                    Product temp = products[j];
-                    products[j] = products[j + 1];
-                    products[j + 1] = temp;
-                }
-            }
         }
     }
 

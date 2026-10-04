@@ -3,7 +3,7 @@ import exception.InvalidPriceException;
 import exception.InvalidQuantityException;
 import exception.ShopException;
 
-public class Product {
+public class Product implements Comparable<Product>, Purchasable {
     private String name;
     private String category;
     private double price;
@@ -35,10 +35,17 @@ public class Product {
         return price;
     }
 
+    @Override
     public int getQuantity() {
         return quantity;
     }
 
+    @Override
+    public int compareTo(Product other) {
+        return Double.compare(this.price, other.price);
+    }
+
+    @Override
     public void buy(int amount) {
         if (amount <= 0) {
             throw new InvalidQuantityException("Кількість для покупки має бути більшою за 0", amount);
