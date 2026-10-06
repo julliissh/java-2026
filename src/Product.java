@@ -1,12 +1,11 @@
 import exception.InsufficientStockException;
 import exception.InvalidPriceException;
 import exception.InvalidQuantityException;
-import exception.ShopException;
 
-public class Product {
-    private String name;
-    private String category;
-    private double price;
+public class Product implements Purchasable, Displayable {
+    private final String name;
+    private final String category;
+    private final double price;
     private int quantity;
 
     public Product(String name, String category, double price, int quantity) {
@@ -35,10 +34,17 @@ public class Product {
         return price;
     }
 
+    @Override
     public int getQuantity() {
         return quantity;
     }
 
+    @Override
+    public String getDisplayInfo() {
+        return name + " (" + category + ") — " + price + " грн";
+    }
+
+    @Override
     public void buy(int amount) {
         if (amount <= 0) {
             throw new InvalidQuantityException("Кількість для покупки має бути більшою за 0", amount);
