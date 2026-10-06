@@ -1,7 +1,7 @@
 package delivery;
 
 public class ExpressDelivery extends AbstractDelivery {
-    private static final double EXPRESS_DELIVERY_EXTRA = 100.0;
+    public static final double EXPRESS_DELIVERY_EXTRA = 100.0;
 
     @Override
     public double calculateCost(double orderSum) {

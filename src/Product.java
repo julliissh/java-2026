@@ -1,9 +1,8 @@
 import exception.InsufficientStockException;
 import exception.InvalidPriceException;
 import exception.InvalidQuantityException;
-import exception.ShopException;
 
-public class Product implements Comparable<Product>, Purchasable {
+public class Product implements Purchasable, Displayable {
     private final String name;
     private final String category;
     private final double price;
@@ -41,8 +40,8 @@ public class Product implements Comparable<Product>, Purchasable {
     }
 
     @Override
-    public int compareTo(Product other) {
-        return Double.compare(this.price, other.price);
+    public String getDisplayInfo() {
+        return name + " (" + category + ") — " + price + " грн";
     }
 
     @Override

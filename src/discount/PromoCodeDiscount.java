@@ -2,7 +2,7 @@ package discount;
 
 public class PromoCodeDiscount implements DiscountStrategy {
     public static final String PROMO_CODE = "SALE15";
-    private static final double PROMO_RATE = 0.15;
+    public static final double PROMO_RATE = 0.15;
 
     @Override
     public double calculateDiscount(double subtotal) {

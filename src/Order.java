@@ -49,20 +49,20 @@ public class Order {
         System.out.println("==================================================");
         System.out.println("                 ЧЕК ЗАМОВЛЕННЯ                   ");
         System.out.println("==================================================");
-        System.out.println("Клієнт: " + customer.getName() + " (" + customer.getPhone() + ")");
-        System.out.println("Товар: " + product.getName());
-        System.out.println("Категорія: " + product.getCategory());
+        System.out.printf("Клієнт: %s (%s)%n", customer.getName(), customer.getPhone());
+        System.out.printf("Товар: %s%n", product.getName());
+        System.out.printf("Категорія: %s%n", product.getCategory());
         System.out.printf("Ціна за од.: %.2f грн%n", product.getPrice());
-        System.out.println("Кількість: " + amount + " шт.");
-        System.out.println("Тип знижки: " + discountStrategy.getName());
-        System.out.println("Тип доставки: " + delivery.getName());
+        System.out.printf("Кількість: %d шт.%n", amount);
+        System.out.printf("Тип знижки: %s%n", discountStrategy.getName());
+        System.out.printf("Тип доставки: %s%n", delivery.getName());
         System.out.println("--------------------------------------------------");
         System.out.printf("Вартість товару: %.2f грн%n", getSubtotal());
         System.out.printf("Знижка клієнта: -%.2f грн%n", getDiscount());
         System.out.printf("Вартість доставки: %.2f грн%n", getDeliveryCost());
         System.out.println("--------------------------------------------------");
         System.out.printf("РАЗОМ ДО СПЛАТИ: %.2f грн%n", getTotal());
-        System.out.println("Залишок товару на складі: " + product.getQuantity() + " шт.");
+        System.out.printf("Залишок товару на складі: %d шт.%n", product.getQuantity());
         System.out.println("==================================================");
         System.out.println("Дякуємо за покупку в нашому інтернет-магазині!");
     }
