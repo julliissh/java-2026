@@ -7,7 +7,7 @@ public class Customer {
     private String phone;
 
     public Customer(String name, String phone) {
-        if (phone == null || phone.matches(PHONE_REGEX) == false) {
+        if (phone == null || !phone.matches(PHONE_REGEX)) {
             throw new InvalidPhoneException("Номер телефону не відповідає формату (наприклад, +380991234567 або 0991234567)", phone);
         }
         this.name = name;
