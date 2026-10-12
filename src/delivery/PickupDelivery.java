@@ -1,9 +1,14 @@
 package delivery;
 
-public class PickupDelivery implements Delivery {
+public class PickupDelivery extends AbstractDelivery {
 
     @Override
-    public double calculateCost(double orderSum) {
+    protected double getBaseCost(double orderSum) {
+        return 0.0;
+    }
+
+    @Override
+    protected double getAdditionalCost(double orderSum) {
         return 0.0;
     }
 

@@ -1,11 +1,9 @@
 import delivery.AbstractDelivery;
+import delivery.Delivery;
+import delivery.DeliveryFactory;
 import delivery.ExpressDelivery;
-import delivery.PickupDelivery;
-import delivery.StandardDelivery;
+import discount.DiscountFactory;
 import discount.DiscountStrategy;
-import discount.NoDiscount;
-import discount.PromoCodeDiscount;
-import discount.ThresholdDiscount;
 import exception.InsufficientStockException;
 import exception.InvalidPhoneException;
 import exception.InvalidPriceException;
@@ -13,6 +11,8 @@ import exception.InvalidQuantityException;
 import exception.ShopException;
 import java.util.InputMismatchException;
 import java.util.Scanner;
+import observer.CustomerNotifier;
+import observer.OrderLogger;
 
 public class Main {
     private static final int MAX_PRODUCTS = 20;
@@ -298,31 +298,24 @@ public class Main {
             System.out.printf("2 - Експрес-доставка (%.0f грн + %.0f грн за швидкість)%n",
                     AbstractDelivery.STANDARD_DELIVERY_FEE, ExpressDelivery.EXPRESS_DELIVERY_EXTRA);
             System.out.println("3 - Самовивіз з магазину (безкоштовно)");
-            System.out.print("Ваш вибір: ");
+            System.out.println("4 - Нова Пошта (стороннє API через Adapter)");
+            System.out.print("Ваш вибір (1-4): ");
             int deliveryChoice = scanner.nextInt();
             scanner.nextLine();
 
-            Order order = new Order(customer, selectedProduct, buyAmount, new ThresholdDiscount(), new StandardDelivery());
-
-            if (deliveryChoice == 2) {
-                order.setDelivery(new ExpressDelivery());
-            } else if (deliveryChoice == 3) {
-                order.setDelivery(new PickupDelivery());
-            } else if (deliveryChoice != 1) {
-                throw new IllegalArgumentException("Некоректний вибір доставки! Оберіть 1, 2 або 3.");
-            }
+            Delivery delivery = DeliveryFactory.createDelivery(deliveryChoice);
 
             System.out.print("\nВведіть промокод (або натисніть Enter, щоб пропустити): ");
             String promoCode = scanner.nextLine().trim();
-            if (promoCode.equalsIgnoreCase(PromoCodeDiscount.PROMO_CODE)) {
-                order.setDiscountStrategy(new PromoCodeDiscount());
-                System.out.printf("Промокод успішно застосовано! Знижка змінена на %d%%.%n",
-                        (int)(PromoCodeDiscount.PROMO_RATE * 100));
-            } else if (!promoCode.isEmpty()) {
-                System.out.println("Промокод недійсний. Застосовано стандартну програму лояльності.");
-            }
+            DiscountStrategy discount = DiscountFactory.createDiscount(promoCode);
+            System.out.println("Застосовано: " + discount.getName());
+
+            Order order = new Order(customer, selectedProduct, buyAmount, discount, delivery);
+            order.addObserver(new OrderLogger());
+            order.addObserver(new CustomerNotifier());
 
             selectedProduct.buy(buyAmount);
+            order.placeOrder();
             order.printReceipt();
 
         } catch (InputMismatchException e) {
@@ -361,11 +354,7 @@ public class Main {
             }
         }
 
-        DiscountStrategy[] strategies = {
-            new NoDiscount(),
-            new ThresholdDiscount(),
-            new PromoCodeDiscount()
-        };
+        DiscountStrategy[] strategies = DiscountFactory.createAllStrategies();
 
         System.out.printf("%nРезультати розрахунку для суми %.2f грн:%n", sum);
         for (DiscountStrategy strategy : strategies) {
