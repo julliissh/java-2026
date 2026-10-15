@@ -1,5 +1,8 @@
 import delivery.Delivery;
 import discount.DiscountStrategy;
+import java.util.ArrayList;
+import java.util.List;
+import observer.OrderObserver;
 
 public class Order {
     private Customer customer;
@@ -7,6 +10,7 @@ public class Order {
     private int amount;
     private DiscountStrategy discountStrategy;
     private Delivery delivery;
+    private final List<OrderObserver> observers = new ArrayList<>();
 
     public Order(Customer customer, Product product, int amount, DiscountStrategy discountStrategy, Delivery delivery) {
         this.customer = customer;
@@ -14,6 +18,24 @@ public class Order {
         this.amount = amount;
         this.discountStrategy = discountStrategy;
         this.delivery = delivery;
+    }
+
+    public void addObserver(OrderObserver observer) {
+        observers.add(observer);
+    }
+
+    public void placeOrder() {
+        notifyObservers();
+    }
+
+    private void notifyObservers() {
+        for (OrderObserver observer : observers) {
+            try {
+                observer.onOrderPlaced(customer.getName(), customer.getPhone(), product.getName(), amount, getTotal());
+            } catch (Exception e) {
+                System.out.println("[СИСТЕМА]: Помилка сповіщення спостерігача " + observer.getClass().getSimpleName() + ": " + e.getMessage());
+            }
+        }
     }
 
     public void setDiscountStrategy(DiscountStrategy discountStrategy) {
@@ -65,5 +87,6 @@ public class Order {
         System.out.printf("Залишок товару на складі: %d шт.%n", product.getQuantity());
         System.out.println("==================================================");
         System.out.println("Дякуємо за покупку в нашому інтернет-магазині!");
+        System.out.println();
     }
 }
