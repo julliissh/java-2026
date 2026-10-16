@@ -1,14 +1,20 @@
+package product;
+
 import exception.InsufficientStockException;
 import exception.InvalidPriceException;
+import exception.InvalidProductDataException;
 import exception.InvalidQuantityException;
+import java.util.Objects;
 
-public class Product implements Purchasable, Displayable {
+public abstract sealed class Product implements Purchasable, Displayable permits Electronics, Clothing {
     private final String name;
-    private final String category;
     private final double price;
     private int quantity;
 
-    public Product(String name, String category, double price, int quantity) {
+    public Product(String name, double price, int quantity) {
+        if (name == null || name.trim().isEmpty()) {
+            throw new InvalidProductDataException("Назва товару не може бути порожньою!");
+        }
         if (price <= 0) {
             throw new InvalidPriceException("Ціна товару повинна бути більшою за 0", price);
         }
@@ -16,18 +22,16 @@ public class Product implements Purchasable, Displayable {
             throw new InvalidQuantityException("Кількість товару повинна бути більшою за 0", quantity);
         }
 
-        this.name = name;
-        this.category = category;
+        this.name = name.trim();
         this.price = price;
         this.quantity = quantity;
+
+        System.out.printf("  [ЛОГ КОНСТРУКТОР]: Product -> ініціалізовано базові поля (назва: \"%s\", ціна: %.2f грн, кількість: %d шт.)%n",
+                this.name, this.price, this.quantity);
     }
 
     public String getName() {
         return name;
-    }
-
-    public String getCategory() {
-        return category;
     }
 
     public double getPrice() {
@@ -40,12 +44,7 @@ public class Product implements Purchasable, Displayable {
     }
 
     @Override
-    public String getDisplayInfo() {
-        return name + " (" + category + ") — " + price + " грн";
-    }
-
-    @Override
-    public void buy(int amount) {
+    public final void buy(int amount) {
         if (amount <= 0) {
             throw new InvalidQuantityException("Кількість для покупки має бути більшою за 0", amount);
         }
@@ -55,9 +54,16 @@ public class Product implements Purchasable, Displayable {
         this.quantity -= amount;
     }
 
+    public abstract String getCategory();
+
+    @Override
+    public String getDisplayInfo() {
+        return name + " (" + getCategory() + ") — " + price + " грн";
+    }
+
     @Override
     public String toString() {
-        return "Товар: " + name + " | Категорія: " + category + " | Ціна: " + price + " грн | Кількість: " + quantity + " шт.";
+        return "Товар: " + name + " | Категорія: " + getCategory() + " | Ціна: " + price + " грн | Кількість: " + quantity + " шт.";
     }
 
     @Override
@@ -65,9 +71,12 @@ public class Product implements Purchasable, Displayable {
         if (this == obj) return true;
         if (obj == null || getClass() != obj.getClass()) return false;
         Product other = (Product) obj;
-        return this.getPrice() == other.getPrice() &&
-               this.getQuantity() == other.getQuantity() &&
-               this.getName().equals(other.getName()) &&
-               this.getCategory().equals(other.getCategory());
+        return Double.compare(other.price, price) == 0 &&
+               Objects.equals(name, other.name);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(name, price);
     }
 }

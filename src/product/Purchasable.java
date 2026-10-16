@@ -1,3 +1,5 @@
+package product;
+
 public interface Purchasable {
     void buy(int amount);
     int getQuantity();
