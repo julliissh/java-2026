@@ -3,8 +3,8 @@ package delivery;
 public class StandardDelivery extends AbstractDelivery {
 
     @Override
-    public double calculateCost(double orderSum) {
-        return getBaseCost(orderSum);
+    protected double getAdditionalCost(double orderSum) {
+        return 0.0;
     }
 
     @Override
