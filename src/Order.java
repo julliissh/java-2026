@@ -3,6 +3,10 @@ import discount.DiscountStrategy;
 import java.util.ArrayList;
 import java.util.List;
 import observer.OrderObserver;
+import product.Electronics;
+import product.Product;
+import product.Smartphone;
+import product.Clothing;
 
 public class Order {
     private Customer customer;
@@ -76,6 +80,11 @@ public class Order {
         System.out.printf("Категорія: %s%n", product.getCategory());
         System.out.printf("Ціна за од.: %.2f грн%n", product.getPrice());
         System.out.printf("Кількість: %d шт.%n", amount);
+
+        if (product instanceof Electronics e) {
+            System.out.printf("Гарантія від виробника: %d міс.%n", e.getWarrantyMonths());
+        }
+
         System.out.printf("Тип знижки: %s%n", discountStrategy.getName());
         System.out.printf("Тип доставки: %s%n", delivery.getName());
         System.out.println("--------------------------------------------------");
@@ -85,6 +94,17 @@ public class Order {
         System.out.println("--------------------------------------------------");
         System.out.printf("РАЗОМ ДО СПЛАТИ: %.2f грн%n", getTotal());
         System.out.printf("Залишок товару на складі: %d шт.%n", product.getQuantity());
+
+        String servicePolicy = switch (product) {
+            case Smartphone s -> "Правила сервісу: гарантійне обслуговування в авторизованому СЦ (пам'ять " +
+                    s.getStorageGb() + " ГБ, батарея " + s.getBatteryCapacity() + " мАг). Збережіть коробку!";
+            case Electronics e -> "Правила сервісу: гарантійний ремонт за наявності чека (термін " +
+                    e.getWarrantyMonths() + " міс.).";
+            case Clothing c -> "Правила сервісу: повернення/обмін протягом 14 днів (розмір " +
+                    c.getSize() + ", матеріал: " + c.getMaterial() + ", фабричні бирки мають бути збережені).";
+        };
+        System.out.println("--------------------------------------------------");
+        System.out.println(servicePolicy);
         System.out.println("==================================================");
         System.out.println("Дякуємо за покупку в нашому інтернет-магазині!");
         System.out.println();

@@ -13,6 +13,13 @@ import java.util.InputMismatchException;
 import java.util.Scanner;
 import observer.CustomerNotifier;
 import observer.OrderLogger;
+import product.Clothing;
+import product.Displayable;
+import product.Electronics;
+import product.Product;
+import product.ProductFactory;
+import product.Purchasable;
+import product.Smartphone;
 
 public class Main {
     private static final int MAX_PRODUCTS = 20;
@@ -38,7 +45,7 @@ public class Main {
                     choice = scanner.nextInt();
                     scanner.nextLine();
                 } catch (InputMismatchException e) {
-                    System.out.println("Помилка: потрібно ввести цифру від 0 до 7!");
+                    System.out.println("Помилка: потрібно ввести цифру від 0 до 8!");
                     scanner.nextLine();
                     continue;
                 }
@@ -65,11 +72,14 @@ public class Main {
                     case 7:
                         compareDiscounts(scanner);
                         break;
+                    case 8:
+                        runSystemDiagnostics();
+                        break;
                     case 0:
                         System.out.println("\nДякуємо за користування нашим інтернет-магазином! Гарного дня!");
                         return;
                     default:
-                        System.out.println("Помилка: невірний пункт меню! Оберіть від 0 до 7.");
+                        System.out.println("Помилка: невірний пункт меню! Оберіть від 0 до 8.");
                         break;
                 }
             }
@@ -105,12 +115,89 @@ public class Main {
         System.out.println("2 - Переглянути всі товари в каталозі");
         System.out.println("3 - Фільтр за бюджетом та підсумок каталогу");
         System.out.println("4 - Сортувати товари за ціною (Bubble Sort)");
-        System.out.println("5 - Пошук товару за зразком (лінійний пошук)");
-        System.out.println("6 - Оформити покупку (розрахунок знижки, доставки та чек)");
+        System.out.println("5 - Пошук товару за зразком");
+        System.out.println("6 - Оформити покупку");
         System.out.println("7 - Порівняти всі способи знижки для суми");
+        System.out.println("8 - Діагностика ієрархії та типів товарів");
         System.out.println("0 - Завершити роботу");
         System.out.println("========================================================");
         System.out.print("Оберіть дію: ");
+    }
+
+    private static Product readProductFromConsole(Scanner scanner, String modeTitle) {
+        System.out.printf("%n--- %s ---%n", modeTitle);
+        System.out.println("Оберіть категорію товару:");
+        System.out.println("1 - Одяг");
+        System.out.println("2 - Електроніка");
+        System.out.println("3 - Смартфон");
+        System.out.print("Ваш вибір (1-3): ");
+
+        int typeChoice = scanner.nextInt();
+        scanner.nextLine();
+
+        System.out.print("Назва товару: ");
+        String name = scanner.nextLine().trim();
+
+        System.out.print("Ціна (грн): ");
+        double price = scanner.nextDouble();
+
+        System.out.print("Кількість (шт): ");
+        int quantity = scanner.nextInt();
+        scanner.nextLine();
+
+        switch (typeChoice) {
+            case ProductFactory.TYPE_CLOTHING:
+                System.out.print("Розмір одягу (наприклад, S, M, L, XL): ");
+                String size = scanner.nextLine().trim();
+                System.out.printf("Використати матеріал за замовчуванням (%s)? (1 - так, 2 - ні): ", Clothing.DEFAULT_MATERIAL);
+                int matChoice = scanner.nextInt();
+                scanner.nextLine();
+                if (matChoice == 1) {
+                    return ProductFactory.createClothing(name, price, quantity, size);
+                } else {
+                    System.out.print("Введіть назву матеріалу: ");
+                    String material = scanner.nextLine().trim();
+                    return ProductFactory.createClothing(name, price, quantity, size, material);
+                }
+
+            case ProductFactory.TYPE_ELECTRONICS:
+                System.out.printf("Використати гарантію за замовчуванням (%d міс.)? (1 - так, 2 - ні): ", Electronics.DEFAULT_WARRANTY_MONTHS);
+                int warChoice = scanner.nextInt();
+                scanner.nextLine();
+                if (warChoice == 1) {
+                    return ProductFactory.createElectronics(name, price, quantity);
+                } else {
+                    System.out.print("Введіть термін гарантії (місяців): ");
+                    int warranty = scanner.nextInt();
+                    scanner.nextLine();
+                    return ProductFactory.createElectronics(name, price, quantity, warranty);
+                }
+
+            case ProductFactory.TYPE_SMARTPHONE:
+                System.out.printf("Використати гарантію за замовчуванням (%d міс.)? (1 - так, 2 - ні): ", Electronics.DEFAULT_WARRANTY_MONTHS);
+                int phoneWarChoice = scanner.nextInt();
+                scanner.nextLine();
+                int warranty;
+                if (phoneWarChoice == 1) {
+                    warranty = Electronics.DEFAULT_WARRANTY_MONTHS;
+                } else {
+                    System.out.print("Введіть термін гарантії (місяців): ");
+                    warranty = scanner.nextInt();
+                    scanner.nextLine();
+                }
+
+                System.out.print("Обсяг вбудованої пам'яті (ГБ): ");
+                int storage = scanner.nextInt();
+
+                System.out.print("Ємність акумулятора (мАг): ");
+                int battery = scanner.nextInt();
+                scanner.nextLine();
+
+                return ProductFactory.createSmartphone(name, price, quantity, warranty, storage, battery);
+
+            default:
+                throw new IllegalArgumentException("Невірний код категорії товару: " + typeChoice + "!");
+        }
     }
 
     private static int addProduct(Scanner scanner, Product[] products, int count) {
@@ -119,22 +206,8 @@ public class Main {
             return count;
         }
 
-        System.out.printf("%n--- ДОДАВАННЯ ТОВАРУ №%d ---%n", (count + 1));
         try {
-            System.out.print("Назва товару: ");
-            String name = scanner.nextLine().trim();
-
-            System.out.print("Категорія: ");
-            String category = scanner.nextLine().trim();
-
-            System.out.print("Ціна (грн): ");
-            double price = scanner.nextDouble();
-
-            System.out.print("Кількість (шт): ");
-            int quantity = scanner.nextInt();
-            scanner.nextLine();
-
-            Product newProduct = createProduct(name, category, price, quantity);
+            Product newProduct = readProductFromConsole(scanner, "ДОДАВАННЯ ТОВАРУ №" + (count + 1));
             products[count] = newProduct;
             count++;
             System.out.println("Товар успішно додано до каталогу!");
@@ -142,12 +215,14 @@ public class Main {
             inspectStock(newProduct);
 
         } catch (InputMismatchException e) {
-            System.out.println("Помилка: ціна та кількість повинні бути коректними числами!");
+            System.out.println("Помилка: введено некоректні дані! Очікувалось число.");
             scanner.nextLine();
         } catch (InvalidPriceException e) {
-            System.out.println("Помилка: " + e.getMessage() + " (введено: " + e.getInvalidPrice() + " грн)!");
+            System.out.println("Помилка ціни: " + e.getMessage() + " (введено: " + e.getInvalidPrice() + " грн)!");
         } catch (ShopException e) {
             System.out.println("Помилка магазину: " + e.getMessage() + "!");
+        } catch (IllegalArgumentException e) {
+            System.out.println("Помилка вхідних даних: " + e.getMessage());
         }
         return count;
     }
@@ -222,43 +297,23 @@ public class Main {
             return;
         }
 
-        System.out.println("\n--- ЛІНІЙНИЙ ПОШУК ТОВАРУ ЗА ЗРАЗКОМ ---");
-        System.out.println("Введіть дані товару-зразка для пошуку (мають збігатися всі поля):");
-
-        Product sampleProduct = null;
-        while (sampleProduct == null) {
-            try {
-                System.out.print("Назва: ");
-                String searchName = scanner.nextLine().trim();
-
-                System.out.print("Категорія: ");
-                String searchCategory = scanner.nextLine().trim();
-
-                System.out.print("Ціна: ");
-                double searchPrice = scanner.nextDouble();
-
-                System.out.print("Кількість: ");
-                int searchQuantity = scanner.nextInt();
-                scanner.nextLine();
-
-                sampleProduct = new Product(searchName, searchCategory, searchPrice, searchQuantity);
-
-            } catch (InputMismatchException e) {
-                System.out.println("Помилка: ціна та кількість зразка мають бути числами!");
-                scanner.nextLine();
-            } catch (ShopException e) {
-                System.out.println("Помилка зразка: " + e.getMessage() + ". Спробуйте ще раз.");
+        System.out.println("\n--- ПОШУК ТОВАРУ ЗА ЗРАЗКОМ (ПЕРЕВІРКА EQUALS) ---");
+        try {
+            Product sample = readProductFromConsole(scanner, "ВВЕДЕННЯ ДАНИХ ЗРАЗКА");
+            int foundIndex = findProduct(products, count, sample);
+            if (foundIndex != -1) {
+                System.out.println();
+                System.out.printf("Знайдено ідентичний товар \"%s\" за індексом [%d]:%n", products[foundIndex].getName(), foundIndex);
+                System.out.println(products[foundIndex]);
+            } else {
+                System.out.println();
+                System.out.println("Товар-зразок не знайдено в каталозі (метод equals повернув false для всіх елементів).");
             }
-        }
-
-        int foundIndex = findProduct(products, count, sampleProduct);
-        if (foundIndex != -1) {
-            System.out.println();
-            System.out.printf("Знайдено товар \"%s\" за індексом [%d]:%n", products[foundIndex].getName(), foundIndex);
-            System.out.println(products[foundIndex]);
-        } else {
-            System.out.println();
-            System.out.println("Товар-зразок не знайдено у списку.");
+        } catch (InputMismatchException e) {
+            System.out.println("Помилка: числові дані введено некоректно!");
+            scanner.nextLine();
+        } catch (ShopException | IllegalArgumentException e) {
+            System.out.println("Помилка введення зразка: " + e.getMessage());
         }
     }
 
@@ -362,13 +417,52 @@ public class Main {
         }
     }
 
-    private static Product createProduct(String name, String category, double price, int quantity) {
-        try {
-            return new Product(name, category, price, quantity);
-        } catch (InvalidPriceException e) {
-            System.out.println("[ЛОГ/АУДИТ]: Спроба створення товару з неприпустимою ціною: " + e.getInvalidPrice() + " грн!");
-            throw e;
+    private static void runSystemDiagnostics() {
+        System.out.println("\n========================================================");
+        System.out.println("         ДІАГНОСТИКА СИСТЕМИ ТА ІЄРАРХІЇ ТОВАРІВ         ");
+        System.out.println("========================================================");
+
+        System.out.println("\n[1] ЛАНЦЮЖОК ВИКЛИКІВ КОНСТРУКТОРІВ:");
+        System.out.println("Створюємо тестовий екземпляр Smartphone:");
+        Smartphone demoPhone = ProductFactory.createSmartphone("Google Pixel 8", 32000, 2, 24, 128, 4575);
+        System.out.println("Створено об'єкт: " + demoPhone);
+        System.out.println("Порядок виконання: Product -> Electronics -> Smartphone.");
+
+        System.out.println("\n[2] ДОСЛІДЖЕННЯ СИМЕТРІЇ EQUALS() (GETCLASS ПРОТИ INSTANCEOF):");
+        Electronics baseElectronics = ProductFactory.createElectronics("Смарт-годинник", 8000.0, 1, 12);
+        Smartphone subSmartphone = ProductFactory.createSmartphone("Смарт-годинник", 8000.0, 1, 12, 64, 450);
+
+        System.out.println("Об'єкт 1 (Electronics): " + baseElectronics);
+        System.out.println("Об'єкт 2 (Smartphone): " + subSmartphone);
+
+        boolean baseEqualsSub = baseElectronics.equals(subSmartphone);
+        boolean subEqualsBase = subSmartphone.equals(baseElectronics);
+
+        System.out.printf("  baseElectronics.equals(subSmartphone) -> %b%n", baseEqualsSub);
+        System.out.printf("  subSmartphone.equals(baseElectronics) -> %b%n", subEqualsBase);
+
+        if (baseEqualsSub == subEqualsBase) {
+            System.out.println("  -> Симетрію збережено: a.equals(b) == b.equals(a) (false завдяки getClass()).");
         }
+
+        System.out.println("\n[3] ДЕМОНСТРАЦІЯ БЕЗПЕЧНОГО ПРИВЕДЕННЯ ТИПІВ:");
+        Product someProduct = ProductFactory.createClothing("Футболка", 500.0, 5, "M", "Бавовна");
+        System.out.printf("Статичний тип: Product | Фактичний тип: %s%n", someProduct.getClass().getSimpleName());
+
+        System.out.println("Спроба явного некоректного приведення (Smartphone) someProduct:");
+        try {
+            Smartphone badCast = (Smartphone) someProduct;
+            System.out.println("Приведення вдалося: " + badCast);
+        } catch (ClassCastException ex) {
+            System.out.println("  -> Перехоплено ClassCastException: " + ex.getMessage());
+            System.out.println("  -> Безпечний виклик через pattern matching:");
+            if (someProduct instanceof Smartphone sp) {
+                System.out.println("  Об'єкт є смартфоном: " + sp.getStorageGb() + " ГБ");
+            } else {
+                System.out.printf("  Об'єкт \"%s\" не є Smartphone, приведення відхилено.%n", someProduct.getName());
+            }
+        }
+        System.out.println("========================================================\n");
     }
 
     private static void printProducts(Product[] products, int count) {
@@ -377,8 +471,7 @@ public class Main {
             return;
         }
         for (int i = 0; i < count; i++) {
-            System.out.printf("[%d] Товар: %-19s | Категорія: %-12s | Ціна: %8.2f грн | Залишок: %3d шт.%n",
-                    (i + 1), products[i].getName(), products[i].getCategory(), products[i].getPrice(), products[i].getQuantity());
+            System.out.printf("[%d] %s%n", (i + 1), products[i].toString());
         }
     }
 
