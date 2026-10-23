@@ -1,14 +1,13 @@
 package product;
 
 import exception.InvalidProductDataException;
-import java.util.Objects;
 
 public final class Smartphone extends Electronics {
     private final int storageGb;
     private final int batteryCapacity;
 
-    public Smartphone(String name, double price, int quantity, int warrantyMonths, int storageGb, int batteryCapacity) {
-        super(name, price, quantity, warrantyMonths);
+    public Smartphone(long id, String name, double price, int quantity, int warrantyMonths, int storageGb, int batteryCapacity) {
+        super(id, name, price, quantity, warrantyMonths);
         if (storageGb <= 0) {
             throw new InvalidProductDataException("Обсяг вбудованої пам'яті має бути більшим за 0 ГБ!");
         }
@@ -17,8 +16,6 @@ public final class Smartphone extends Electronics {
         }
         this.storageGb = storageGb;
         this.batteryCapacity = batteryCapacity;
-        System.out.printf("  [ЛОГ КОНСТРУКТОР]: Smartphone -> параметри смартфона (пам'ять: %d ГБ, батарея: %d мАг)%n",
-                this.storageGb, this.batteryCapacity);
     }
 
     public int getStorageGb() {
@@ -37,19 +34,5 @@ public final class Smartphone extends Electronics {
     @Override
     public String toString() {
         return super.toString() + " | Пам'ять: " + storageGb + " ГБ | Батарея: " + batteryCapacity + " мАг";
-    }
-
-    @Override
-    public boolean equals(Object obj) {
-        if (this == obj) return true;
-        if (obj == null || getClass() != obj.getClass()) return false;
-        if (!super.equals(obj)) return false;
-        Smartphone that = (Smartphone) obj;
-        return storageGb == that.storageGb && batteryCapacity == that.batteryCapacity;
-    }
-
-    @Override
-    public int hashCode() {
-        return Objects.hash(super.hashCode(), storageGb, batteryCapacity);
     }
 }
