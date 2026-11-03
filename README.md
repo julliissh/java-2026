@@ -1,181 +1,164 @@
-# Лабораторна робота №6: Реалізація ієрархії класів на основі принципів наслідування
+# Лабораторна робота №7-9: Реалізація типізованого CRUD-сервісу
 
-## Предметна область: Інтернет-магазин
+## Предметна область та опис сутностей
 
-Ця лабораторна робота є логічним продовженням та архітектурним рефакторингом попередніх ЛР №1–5.
-Мета роботи — засвоїти механізм наслідування в Java: проєктування ієрархії за принципом «is-a», ланцюжок викликів конструкторів (`super`, `this`), перевизначення методів, абстрактні класи, поліморфну поведінку колекцій об'єктів, контракти `equals()` / `hashCode()`, а також переваги сучасних запечатаних ієрархій (**Sealed Classes**) та **Pattern Matching** у Java 21+.
+У системі визначено спільний базовий клас `BaseEntity` та дві сутності предметної області інтернет-магазину:
 
----
-
-## 1. Концепція та перевірка зв'язків «is-a» (є різновидом)
-
-До рефакторингу тип товару визначався простим строковим полем `private final String category` у єдиному монолітному класі `Product`. Це не дозволяло валідувати специфічні характеристики (гарантія для техніки, розмір і тканина для одягу, акумулятор і пам'ять для смартфонів).
-
-Перед написанням коду спроєктовано та перевірено відношення «is-a»:
-
-| Відношення класів | Перевірка словами («is-a» / «has-a») | Доречність наслідування |
-|---|---|---|
-| **`Smartphone` → `Electronics`** | Смартфон **є різновидом** електроніки («is-a») | **ТАК**: успадковує гарантійний термін і додає пам'ять та акумулятор. |
-| **`Electronics` → `Product`** | Електроніка **є різновидом** товару («is-a») | **ТАК**: успадковує назву, ціну, залишок і додає гарантію. |
-| **`Clothing` → `Product`** | Одяг **є різновидом** товару («is-a») | **ТАК**: успадковує базові поля товару і додає розмір та матеріал. |
-| **`Order` → `Product`** | Замовлення **має** товар («has-a») | **НІ (Композиція)**: замовлення не є товаром, наслідування порушило б LSP. |
-| **`SaleProduct` → `Product`** | Товар зі знижкою | **НІ (Антипатерн)**: знижка є змінним станом/поведінкою, а не сталим типом. Призвело б до комбінаторного вибуху (`SaleSmartphone`, `SaleClothing`). Вирішено через композицію (`Order` містить `DiscountStrategy`). |
+1. **`Product` (Товар)** — абстрактний клас товару:
+   - Успадковує `id` та `name` від `BaseEntity`.
+   - Зберігає ціну (`price > 0`) та залишок на складі (`quantity > 0`).
+   - Має запечатану (sealed) ієрархію спеціалізованих категорій:
+     - **`Clothing` (Одяг)** — додає розмір (`size`) та матеріал тканини (`material`).
+     - **`Electronics` (Електроніка)** — додає гарантійний термін (`warrantyMonths`).
+     - **`Smartphone` (Смартфон)** — нащадок `Electronics`, додає обсяг вбудованої пам'яті (`storageGb`) та ємність акумулятора (`batteryCapacity`).
+2. **`Customer` (Покупець)** — сутність клієнта магазину:
+   - Успадковує `id` та `name` від `BaseEntity`.
+   - Зберігає номер телефону (`private final String phone`) із суворою перевіркою регулярним виразом під формат українських мобільних номерів.
 
 ---
 
-## 2. Діаграма класів ієрархії (Mermaid)
+## Рівень 1. Базовий (обов'язковий мінімум)
 
-```mermaid
-classDiagram
-    direction TB
+1. **`BaseEntity`** (`entity/BaseEntity.java`):
+   - `private final long id` — незмінний ідентифікатор після створення.
+   - `private final String name` — назва або ім'я (перевірка `name == null || name.trim().isEmpty()`).
+   - Конструктор та гетери `getId()`, `getName()`.
+   - Методи `equals(Object obj)` та `hashCode()` перевизначені за `id` з перевіркою `getClass()`, щоб уникнути помилкової рівності між різними типами сутностей (наприклад, `Product` і `Customer`) з однаковим `id`.
+   - Сутності `Product` та `Customer` успадковують `BaseEntity`.
 
-    class Purchasable {
-        <<interface>>
-        +buy(int amount) void
-        +getQuantity() int
-        +isInStock() boolean
-    }
+2. **`EntityNotFoundException`** (`exception/EntityNotFoundException.java`):
+   - Містить поле `id` та інформативне повідомлення.
+   - **Обґрунтування unchecked:** `EntityNotFoundException extends ShopException extends RuntimeException`. Unchecked, бо `findById` викликається в багатьох місцях, і checked-виняток змусив би кожен виклик обгортати в `try-catch` або прокидати `throws`. Checked-винятки також незручні в лямбдах. Мінус: компілятор не змушує обробити виняток, тому його потрібно перехоплювати вручну там, де це необхідно, як у `CrudDemo`.
 
-    class Displayable {
-        <<interface>>
-        +getDisplayInfo() String
-    }
+3. **`CRUDService<T extends BaseEntity>`** (`service/CRUDService.java`):
+   - Інтерфейс із методами: `findById`, `save`, `delete`, `findAllSorted`, `findAllSortedByName`.
+   - **Навіщо потрібне обмеження `T extends BaseEntity`:** Без цього обмеження тип `T` стирався б компілятором до `Object`. Всередині сервісу у методі `save(T entity)` було б неможливо викликати метод `entity.getId()`, щоб використати його як ключ у мапі (`storage.put(entity.getId(), entity)`). Довелося б робити небезпечне явне приведення типів `((BaseEntity) entity).getId()`, що порушувало б типову безпеку під час компіляції.
 
-    class Product {
-        <<abstract>>
-        -String name
-        -double price
-        -int quantity
-        +Product(String, double, int)
-        +getName() String
-        +getPrice() double
-        +getQuantity() int
-        +buy(int amount) void
-        +getCategory()* String
-        +getDisplayInfo() String
-        +toString() String
-        +equals(Object) boolean
-        +hashCode() int
-    }
+4. **`InMemoryCrudService<T extends BaseEntity>`** (`service/InMemoryCrudService.java`):
+   - Зберігає дані у колекції `LinkedHashMap<Long, T>`.
+   - Метод `save` використовує `put(entity.getId(), entity)`: якщо запис новий — додає, якщо id вже існує — оновлює значення, тому загальна кількість записів не збільшується.
+   - Метод `delete` використовує `storage.remove(id) != null` (повертає `true`, якщо елемент видалено, і `false`, якщо його не було).
+   - Працює як для `Product`, так і для `Customer` без будь-яких змін коду.
 
-    class Electronics {
-        -int warrantyMonths
-        +Electronics(String, double, int, int)
-        +Electronics(String, double, int)
-        +getWarrantyMonths() int
-        +getCategory() String
-        +toString() String
-        +equals(Object) boolean
-        +hashCode() int
-    }
+5. **Чому `findById` кидає виняток, а `delete` повертає `boolean`?**
+   - **Для `findById` результат є обов'язковим:** клієнтський код очікує отримати конкретну сутність для подальших дій. Якщо сутності з таким `id` немає — сервіс не може повернути потрібне значення (а повернення `null` веде до ризику `NullPointerException`). Тому це виняткова ситуація, що сигналізується через `EntityNotFoundException`.
+   - **Для `delete` ситуація «не було що видаляти» — звичайний результат, а не помилка:** мета операції — гарантувати відсутність сутності в системі. Якщо її там і не було, стан системи не порушено, система працює штатно. Метод просто повертає `boolean` (`true` — видалено, `false` — сутності з таким `id` і не було).
 
-    class Smartphone {
-        -int storageGb
-        -int batteryCapacity
-        +Smartphone(String, double, int, int, int, int)
-        +getStorageGb() int
-        +getBatteryCapacity() int
-        +getCategory() String
-        +toString() String
-        +equals(Object) boolean
-        +hashCode() int
-    }
+---
 
-    class Clothing {
-        -String size
-        -String material
-        +Clothing(String, double, int, String, String)
-        +Clothing(String, double, int, String)
-        +getSize() String
-        +getMaterial() String
-        +getCategory() String
-        +toString() String
-        +equals(Object) boolean
-        +hashCode() int
-    }
+## Рівень 2. Середній
 
-    Purchasable <|.. Product
-    Displayable <|.. Product
-    Product <|-- Electronics : permits
-    Product <|-- Clothing : permits
-    Electronics <|-- Smartphone : permits
+### 1. Comparator, а не Comparable
+
+Для сортування обрано **`Comparator`**, а не `Comparable`:
+* `Comparable` задає один «природний» порядок усередині класу, а нам потрібно два: за назвою і за назвою + ціною.
+* До того ж `BaseEntity` спільний для `Product` і `Customer`, і «природний порядок» за назвою нав'язувати їм обом не варто.
+* `Comparator` можна скласти через `thenComparing`, не чіпаючи самих сутностей.
+
+### 2. Таблиця колекцій для сховища
+
+(де n — кількість записів у сховищі):
+
+| Операція | ArrayList | HashMap | LinkedHashMap (Обрано) | TreeMap |
+| --- | --- | --- | --- | --- |
+| **`findById`** | O(n) | O(1) серед. | **O(1) серед.** | O(log n) |
+| **`save` (додати/оновити)** | O(n) | O(1) серед. | **O(1) серед.** | O(log n) |
+| **`delete`** | O(n) | O(1) серед. | **O(1) серед.** | O(log n) |
+| **Відсортований список за назвою** | O(n log n) | O(n log n) | **O(n log n)** | O(n log n): впорядкований за `id`, а не за назвою |
+| **Порядок обходу (`findAll`)** | вставки | не гарантований | **вставки** | за ключем |
+
+**Обґрунтування вибору:**  
+Обрано **`LinkedHashMap`**: швидкі операції за `id` (O(1) у середньому), як у `HashMap`, плюс передбачуваний порядок вставки. `TreeMap` дає автоматичну впорядкованість за числовим ключем `id`, але для сортування за назвою чи ціною вона нічим не допомагає, а лише сповільнює базові операції до O(log n).
+
+### 3. Узгодженість з `equals`
+
+Компаратор **не узгоджений** з `equals`:
+* Дві «Футболки» з різними `id` (`id=1` та `id=3`) дають `compare == 0` за назвою, але не `equals`, бо `equals` у `BaseEntity` порівнює сутності за їхнім унікальним `id`.
+* **Наслідок:** у `TreeSet`/`TreeMap` з таким компаратором одна з них була б втрачена, тому для сховища він не підходить. А `List.sort` нічого не губить, оскільки список дозволяє зберігати кілька елементів з однаковими полями.
+
+### 4. Чому метод `findAllSortedByNameAndByPrice()` винесено в `ProductService`?
+
+Метод вторинного сортування залежить від поля ціни (`price`), яке є лише в товарах (`Product`). Товари з однаковою назвою (як дві футболки) в інтернет-магазині логічно розрізняти за ціною, щоб покупець міг порівняти варіанти від дешевших до дорожчих.
+
+У базовому класі `BaseEntity` є лише `id` та `name`, а в сутності `Customer` є телефон, але немає ціни. Якби ми додали цей метод у загальний `CRUDService<T>`, сутність `Customer` мусила б реалізовувати непотрібний їй метод. Окремий інтерфейс `ProductService extends CRUDService<Product>` гарантує, що метод є тільки там, де він справді має сенс.
+
+### 5. Незмінність початкового сховища
+
+Методи сортування не змінюють початкове сховище:
+```java
+List<Product> sorted = findAll(); // створюється нова копія
+sorted.sort(Comparator.comparing(Product::getName)
+        .thenComparingDouble(Product::getPrice));
+return sorted;
 ```
+Сортується повернута копія списку, тому склад та порядок елементів у `storage` залишаються незмінними (що підтверджує вивід до й після сортувань у `CrudDemo`).
 
 ---
 
-## 3. Деталі реалізації за рівнями складності
+## Рівень 3. Високий
 
-### Рівень 1. Базовий
-- **Базовий клас `Product`:** винесено спільні поля (`name`, `price`, `quantity`), конструктор та базові методи. Усі поля інкапсульовані як `private`.
-- **Підкласи:** `Electronics` та `Clothing` містять виключно власні специфічні поля.
-- **Ланцюжок `super(...)`:** у конструкторах усіх підкласів першим оператором викликається конструктор батьківського класу `super(...)`.
-- **Перевизначення `toString()`:** кожен підклас перевизначає `toString()`, обов'язково викликаючи `super.toString()` і конкатенуючи свої унікальні поля.
-- **Поліморфізм у циклі:** у методі `printProducts` масив базового типу `Product[]` обробляється в єдиному циклі, де динамічно викликаються перевизначені методи `toString()` та `getCategory()`.
+### 1. Узагальнений метод `findAllSorted` та `default`-метод
 
-### Рівень 2. Середній
-- **Абстрактний клас і метод:** клас `Product` оголошено як `abstract`, оскільки створення абстрактного екземпляра «товару взагалі» в інтернет-магазині не має сенсу.
-- **Абстрактний метод `public abstract String getCategory()`:** прямий рефакторинг старого поля `category: String`. Тепер неможливо забути або спотворити категорію — кожен підклас зобов'язаний реалізувати її повернення. `Smartphone` перевизначає `getCategory()`, повертаючи "Смартфон".
-- **Конкретний клас `Electronics`:** оголошений як `sealed`, але **НЕ** `abstract`, оскільки в магазині продається загальна електроніка (навушники, зарядні пристрої, кабелі), для яких створення підкласу `Smartphone` було б надлишковим.
-- **Три рівні ієрархії:** `Product` (1-й рівень) → `Electronics` (2-й рівень) → `Smartphone` (3-й рівень).
-- **Повідомлення в конструкторах:** у кожному конструкторі виведено лог `[ЛОГ КОНСТРУКТОР]`, що підтверджує порядок ініціалізації: від базового класу до нащадка.
-- **Делегування конструкторів `this(...)`:**
-  - `Electronics(name, price, quantity)` делегує до `this(name, price, quantity, DEFAULT_WARRANTY_MONTHS)` (гарантія 12 міс. за замовчуванням).
-  - `Clothing(name, price, quantity, size)` делегує до `this(name, price, quantity, size, DEFAULT_MATERIAL)` (матеріал "Бавовна" за замовчуванням).
-- **Модифікатор `final`:**
-  - Метод `buy(int amount)` у `Product` оголошено як `final`, щоб жоден підклас не міг порушити логіку перевірки та списання залишків на складі.
-  - Класи `Clothing` та `Smartphone` оголошено як `final`, оскільки їхня спеціалізація завершена.
-- **Звернення до методів підкласу через базове посилання:**
-  - У чеку замовлення (`Order.printReceipt`): перевірка `if (product instanceof Electronics e)` дозволяє викликати специфічний метод `e.getWarrantyMonths()`. Оскільки змінна має статичний тип `Product` (оголошений під час компіляції), але динамічний тип `Electronics` або `Smartphone` (фактичний об'єкт у купі), pattern matching безпечно приводить тип без ризику помилок.
-  - У пункті меню 8 продемонстровано обробку `ClassCastException` при спробі некоректного явного приведення `(Smartphone) someProduct` (де об'єкт є одягом), і показано безпечний варіант через `instanceof`.
-
-### Рівень 3. Високий
-- **Перевизначення `equals()` та `hashCode()`:**
-  - Виключено поле `quantity`: кількість товару є змінним станом складу (`buy()`), і її включення призвело б до зміни хеш-коду мутабельного об'єкта під час роботи програми, що зламало б роботу в `HashSet` / `HashMap`. Рівність базується виключно на незмінній ідентичності товару.
-  - **Дослідження симетрії:** порівняння `getClass() != obj.getClass()` замість `instanceof`. Якби `Electronics` використовував `instanceof Electronics`, то `baseElectronics.equals(subSmartphone)` повернув би `true` (бо смартфон є електронікою), а `subSmartphone.equals(baseElectronics)` повернув би `false` (бо базовий об'єкт не має полів пам'яті та батареї). Це порушило б фундаментальну властивість симетрії $a = b \iff b = a$. Завдяки `getClass()` симетрія зберігається: обидва виклики повертають `false`.
-- **Композиція замість наслідування:** детально обґрунтовано в пункті 1 (чому `Order` містить `Product`, а знижки реалізовано через патерн Strategy, а не через антипатерн `SaleProduct`).
-
-### Самостійне опрацювання (Sealed Classes + Switch Pattern Matching)
-- Ієрархію оголошено через `sealed class Product permits Electronics, Clothing` та `sealed class Electronics permits Smartphone`.
-- У методі друку чека (`Order.printReceipt`) сформовано правила гарантійного сервісу через вираз `switch (product)` з pattern matching без блоку `default`:
-  ```java
-  String servicePolicy = switch (product) {
-      case Smartphone s -> "Правила сервісу: гарантійне обслуговування в авторизованому СЦ (пам'ять " +
-              s.getStorageGb() + " ГБ, батарея " + s.getBatteryCapacity() + " мАг). Збережіть коробку!";
-      case Electronics e -> "Правила сервісу: гарантійний ремонт за наявності чека (термін " +
-              e.getWarrantyMonths() + " міс.).";
-      case Clothing c -> "Правила сервісу: повернення/обмін протягом 14 днів (розмір " +
-              c.getSize() + ", матеріал: " + c.getMaterial() + ", фабричні бирки мають бути збережені).";
-  };
-  ```
-- **Гарантія компілятору:** запечатана ієрархія точно фіксує перелік можливих підтипів на етапі компіляції. Компілятор перевіряє вичерпність (exhaustiveness), тому гілка `default` не потрібна.
-- **Вимога домінування (Dominance):** `case Smartphone s` обов'язково повинен стояти перед `case Electronics e`, інакше компілятор видасть помилку: підклас виявиться недосяжним через перехоплення загальним батьківським класом.
-
----
-
-## 4. Що потрібно змінити у разі додавання нового підкласу товару?
-
-Якщо в асортимент інтернет-магазину додається нова категорія, наприклад `Book` (Книга):
-1. Створити клас `public final class Book extends Product` з власними специфічними полями (`author`, `isbn`, `pagesCount`).
-2. Додати `Book` у список дозволених класів базового класу `Product`:
+В інтерфейс `CRUDService<T>` додано узагальнений метод:
+```java
+List<T> findAllSorted(Comparator<? super T> comparator);
+```
+Через нього реалізовано обидва методи сортування:
+1. `findAllSortedByName()` зроблено `default`-методом інтерфейсу `CRUDService<T>`:
    ```java
-   public abstract sealed class Product permits Electronics, Clothing, Book
+   default List<T> findAllSortedByName() {
+       return findAllSorted(Comparator.comparing(BaseEntity::getName));
+   }
    ```
-3. Додати створення книги у фабрику `ProductFactory` та пункт вибору в меню `Main.java`.
-4. **Головна перевага `sealed`:** компілятор Java одразу знайде та підсвітить помилкою всі вирази `switch (product)`, де відсутня гілка `case Book b`, вимагаючи додати бізнес-правила повернення для книг. Жодне місце в системі не буде забуто!
+2. `findAllSortedByNameAndByPrice()` в `InMemoryProductService` також делегує виконання методу `findAllSorted`:
+   ```java
+   @Override
+   public List<Product> findAllSortedByNameAndByPrice() {
+       return findAllSorted(Comparator.comparing(Product::getName)
+               .thenComparingDouble(Product::getPrice));
+   }
+   ```
+
+### 2. Чому `Comparator<? super T>`, а не `Comparator<T>`?
+
+Компаратор лише приймає об'єкти для їх порівняння (споживає їх):
+* Вираз `Comparator.comparing(BaseEntity::getName)` повертає `Comparator<BaseEntity>`.
+* Оскільки дженерики в Java є інваріантними, `Comparator<BaseEntity>` не є підтипом `Comparator<Product>`. Якби сигнатура вимагала строго `Comparator<T>`, ми не змогли б передати компаратор базового класу `BaseEntity` у метод для `ProductService` або `CustomerService`.
+* Запис `Comparator<? super T>` дозволяє передавати компаратор як для самого типу `T`, так і для будь-якого його батьківського класу (`BaseEntity`), що забезпечує зручне повторне використання коду.
+
+### 3. Утилітний метод `printAll` та Wildcard `? extends BaseEntity`
+
+Утилітний метод реалізовано в класі `EntityUtils`:
+```java
+public static void printAll(Collection<? extends BaseEntity> items) {
+    if (items == null || items.isEmpty()) {
+        return;
+    }
+    for (BaseEntity item : items) {
+        System.out.println("  " + item);
+    }
+}
+```
+
+**Чому `List<Product>` не можна передати туди, де очікується `List<BaseEntity>`:**
+* Дженерики в Java інваріантні: хоча `Product extends BaseEntity`, тип `List<Product>` НЕ є нащадком `List<BaseEntity>`.
+* Якби компілятор дозволив таку передачу, виникла б проблема типобезпеки: через посилання `List<BaseEntity>` у список можна було б додати інший підтип, наприклад `new Customer(...)` (бо `Customer` теж `BaseEntity`), що призвело б до падіння вихідного списку товарів з `ClassCastException` під час виконання.
+* **Що змінює wildcard `? extends BaseEntity`:** конструкція `Collection<? extends BaseEntity>` дозволяє методу приймати списки будь-яких підкласів `BaseEntity` (`List<Product>`, `List<Customer>`, `Set<Clothing>`). При цьому компілятор блокує будь-які спроби додавання нових елементів у таку колекцію всередині методу, дозволяючи лише безпечно читати елементи як `BaseEntity`.
 
 ---
 
-## 5. Інструкція запуску програми
+### Примітка про сортування та рядки
 
-### Через run.bat:
-```cmd
-run.bat
+* `BaseEntity` забороняє `null` або порожній рядок у конструкторі (`name == null || name.trim().isEmpty()`), тому в сховищі об'єктів з `null` не буде, і `NullPointerException` при порівнянні імен не виникає.
+* Стандартний `String.compareTo` порівнює символи за їхніми кодами Unicode. Через це українські літери `І`, `Ї`, `Є`, `Ґ` стають поза алфавітним порядком (після `Я` або перед `А`). Для суворого алфавітного сортування локалізованих текстів у Java використовується `java.text.Collator.getInstance(new Locale("uk", "UA"))`. На тестових даних це не проявляється, оскільки імена починаються з загальних літер, але це стандартна особливість порівняння рядків у Java.
+
+---
+
+### Запуск програми:
+```bash
+# Компіляція
+javac -d bin -encoding UTF-8 src/*.java src/delivery/*.java src/discount/*.java src/entity/*.java src/exception/*.java src/observer/*.java src/product/*.java src/service/*.java
+
+# Запуск демонстрації
+java -cp bin CrudDemo
 ```
-
-### Через консоль (PowerShell / CMD):
-```powershell
-javac -encoding UTF-8 -sourcepath src -d out src\Main.java
-java -cp out -Dfile.encoding=UTF-8 Main
-```
-
-> **Примітка:** Пункт меню **8** запускає автоматичну діагностику: наочно демонструє ланцюжок 3 рівнів конструкторів, математичну симетрію `equals()` та безпечне приведення типів (перехоплення `ClassCastException` проти `instanceof`).
