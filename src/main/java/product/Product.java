@@ -5,21 +5,27 @@ import exception.InsufficientStockException;
 import exception.InvalidPriceException;
 import exception.InvalidQuantityException;
 
-public abstract sealed class Product extends BaseEntity implements Purchasable, Displayable permits Electronics, Clothing {
+public class Product extends BaseEntity implements Purchasable, Displayable {
     private final double price;
     private int quantity;
+    private long categoryId;
 
-    protected Product(long id, String name, double price, int quantity) {
+    public Product(long id, String name, double price, int quantity) {
+        this(id, name, price, quantity, 1L);
+    }
+
+    public Product(long id, String name, double price, int quantity, long categoryId) {
         super(id, name);
         if (price <= 0) {
             throw new InvalidPriceException("Ціна товару повинна бути більшою за 0", price);
         }
-        if (quantity <= 0) {
-            throw new InvalidQuantityException("Кількість товару повинна бути більшою за 0", quantity);
+        if (quantity < 0) {
+            throw new InvalidQuantityException("Кількість товару не може бути меншою за 0", quantity);
         }
 
         this.price = price;
         this.quantity = quantity;
+        this.categoryId = categoryId;
     }
 
     public double getPrice() {
@@ -29,6 +35,14 @@ public abstract sealed class Product extends BaseEntity implements Purchasable, 
     @Override
     public int getQuantity() {
         return quantity;
+    }
+
+    public long getCategoryId() {
+        return categoryId;
+    }
+
+    public void setCategoryId(long categoryId) {
+        this.categoryId = categoryId;
     }
 
     @Override
@@ -42,7 +56,9 @@ public abstract sealed class Product extends BaseEntity implements Purchasable, 
         this.quantity -= amount;
     }
 
-    public abstract String getCategory();
+    public String getCategory() {
+        return "Загальна категорія";
+    }
 
     @Override
     public String getDisplayInfo() {
@@ -51,6 +67,6 @@ public abstract sealed class Product extends BaseEntity implements Purchasable, 
 
     @Override
     public String toString() {
-        return "Товар [id=" + getId() + "]: " + getName() + " | Категорія: " + getCategory() + " | Ціна: " + price + " грн | Кількість: " + quantity + " шт.";
+        return "Товар [id=" + getId() + "]: " + getName() + " | Категорія: " + getCategory() + " (categoryId=" + categoryId + ") | Ціна: " + price + " грн | Кількість: " + quantity + " шт.";
     }
 }
