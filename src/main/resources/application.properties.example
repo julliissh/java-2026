@@ -1,0 +1,4 @@
+db.url=jdbc:postgresql://localhost:5432/shopdb
+db.user=postgres
+db.password=YOUR_PASSWORD
+db.pool.max-size=5

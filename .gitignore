@@ -1,12 +1,18 @@
 .idea/
+.vscode/
 *.iml
 
 bin/
 out/
 target/
+data/
+*.db
 
 run.bat
+
+src/main/resources/application.properties
 
 *.class
 *.code-workspace
 *.pdf
+*.zip
